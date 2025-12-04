@@ -201,7 +201,7 @@
             </div>
         <div class="mt-6 text-center">
              <button id="voice-button" class="bg-accent hover:bg-accent-dark text-white font-bold py-2 px-4 rounded disabled:opacity-50 disabled:cursor-not-allowed">
-                 Speak Action 🎤
+                 Hold to speak 🎤
              </button>
              <div id="feedback-percentage-area" class="text-center font-semibold mt-2 min-h-[1.2em]">
                 </div>
@@ -433,6 +433,8 @@ let ttsUnlocked = false; // Has the user interaction unlocked text-to-speech?
 let micPermissionGranted = null; // null: unknown, true: granted, false: denied
 let isListening = false; // Is the speech recognition actively listening?
 let voiceListenersAttached = false; // Prevent attaching press/hold handlers twice
+let isHoldActive = false; // Is the voice button currently held down?
+let userStoppedRecognition = false; // Track intentional stops to prevent auto-restart
 
 const MEMORY_SIMILARITY_THRESHOLD = 0.50; // Required similarity (0-1) for memory check
 
@@ -693,9 +695,9 @@ function updateVoiceButtonUI() {
     if (isListening) {
         voiceButton.classList.add('listening', 'bg-info');
         if (isMemoryCheckPhase) {
-            voiceButton.textContent = 'Listening for Recall... 👂';
+            voiceButton.textContent = 'Release to stop 🎤';
         } else if (isChoiceSpeakingPhase) {
-            voiceButton.textContent = 'Listening for Choice... 👂';
+            voiceButton.textContent = 'Release to stop 🎤';
         } else {
              voiceButton.textContent = 'Listening... 👂'; // Generic fallback
         }
@@ -703,16 +705,16 @@ function updateVoiceButtonUI() {
          // Default button state
         voiceButton.classList.add('bg-accent', 'hover:bg-accent-dark');
         if (isMemoryCheckPhase) {
-            voiceButton.textContent = 'Speak English Text 🎤';
-            voiceStatusEl.textContent = "Click button above to speak the English text you heard.";
+            voiceButton.textContent = 'Hold to speak English text 🎤';
+            voiceStatusEl.textContent = "Hold the button and say the English text you heard.";
             voiceStatusEl.className = 'text-highlight';
         } else if (isChoiceSpeakingPhase) {
-            voiceButton.textContent = 'Speak Choice 🎤';
-            voiceStatusEl.textContent = "Click button above to speak your choice.";
+            voiceButton.textContent = 'Hold to speak your choice 🎤';
+            voiceStatusEl.textContent = "Hold the button and say your choice.";
              voiceStatusEl.className = 'text-info';
         } else {
              // Button shouldn't normally be active here unless end/error
-             voiceButton.textContent = 'Speak Action 🎤';
+             voiceButton.textContent = 'Hold to speak 🎤';
         }
     }
 
@@ -921,21 +923,18 @@ function initializeSpeechRecognition() {
             if (event.results && event.results[0] && event.results[0][0]) {
                 transcript = event.results[0][0].transcript.trim();
             } else {
-                 console.warn("[SpeechRec] onresult: Received empty/malformed results.");
+                console.warn("[SpeechRec] onresult: Received empty/malformed results.");
             }
             console.log(`[SpeechRec] Recognized: "${transcript}"`);
 
-             // Stop listening once we have a result
-             if (recognition && isListening) {
-                 try { recognition.stop(); } catch(e) { console.warn("Error stopping recognition after result:", e); }
-             }
+            // Do NOT stop here. We keep listening while the button is held.
 
             if (isMemoryCheckPhase) {
                 processMemoryCheckResult(transcript);
             } else if (isChoiceSpeakingPhase) {
                 processChoiceSpeechResult(transcript);
             } else {
-                 console.warn("[SpeechRec] Received result in unexpected phase.");
+                console.warn("[SpeechRec] Received result in unexpected phase.");
             }
         };
 
@@ -961,7 +960,28 @@ function initializeSpeechRecognition() {
         recognition.onend = () => {
             console.log('[SpeechRec] Event: onend');
             isListening = false;
-            updateVoiceButtonUI(); // Reset button state after listening stops
+            updateVoiceButtonUI(); // Reset button state
+
+            // If recognition ended *not* because we explicitly stopped,
+            // and the button is still held, and we are in a valid phase,
+            // restart recognition to keep listening while held.
+            if (
+                isHoldActive &&
+                micPermissionGranted &&
+                (isMemoryCheckPhase || isChoiceSpeakingPhase) &&
+                !userStoppedRecognition &&
+                recognition
+            ) {
+                console.log('[SpeechRec] onend while button is held – restarting recognition.');
+                try {
+                    recognition.start();
+                } catch (e) {
+                    console.warn("[SpeechRec] Error restarting recognition in onend:", e);
+                }
+            }
+
+            // Reset the flag after any end
+            userStoppedRecognition = false;
         };
 
          console.log("[SpeechRec] Initialization complete.");
@@ -1017,7 +1037,7 @@ function processMemoryCheckResult(transcript) {
         }
 
         // --- Set NEXT INSTRUCTION in the main voiceStatusEl ---
-        voiceStatusEl.textContent = `Choices below. Click button to speak choice.`;
+        voiceStatusEl.textContent = `Choices below. Hold the button to speak your choice.`;
         voiceStatusEl.className = 'text-info'; // Use neutral color for instruction
 
         // --- Perform immediate state updates and UI changes for pass ---
@@ -1047,7 +1067,7 @@ function processMemoryCheckResult(transcript) {
         }
 
         // --- Set NEXT INSTRUCTION in the main voiceStatusEl ---
-        voiceStatusEl.textContent = `Click button to try recall again.`;
+        voiceStatusEl.textContent = `Hold the button to try recall again.`;
         voiceStatusEl.className = 'text-highlight'; // Match feedback color for retry instruction
 
         // --- Perform immediate state updates and UI changes for fail ---
@@ -1581,10 +1601,12 @@ function handleVoiceButtonClick(action) {
     }
 
     if (action === 'stop') {
-        // stop listening when button is released
+        // user released the button → stop recognition and prevent auto-restart
+        isHoldActive = false;
         if (isListening) {
             console.log("[Voice Button] Stopping recognition (button released).");
             try {
+                userStoppedRecognition = true;  // mark this as intentional stop
                 recognition.stop();
             } catch (e) {
                 console.warn("[Voice Button] Error stopping recognition:", e);
@@ -1593,9 +1615,11 @@ function handleVoiceButtonClick(action) {
         return;
     }
 
-    // --- action === 'start': start listening only while button is held ---
+    // --- action === 'start': start listening while button is held ---
+    isHoldActive = true;
+
     if (isListening) {
-        // already listening, ignore extra press
+        // already listening (maybe auto-restart), ignore extra press
         return;
     }
 
