@@ -432,6 +432,7 @@ let memoryCheckPassed = false; // Did the player succeed in the last memory chec
 let ttsUnlocked = false; // Has the user interaction unlocked text-to-speech?
 let micPermissionGranted = null; // null: unknown, true: granted, false: denied
 let isListening = false; // Is the speech recognition actively listening?
+let shouldStopAfterStart = false; // Track early button release before recognition begins
 
 const MEMORY_SIMILARITY_THRESHOLD = 0.50; // Required similarity (0-1) for memory check
 
@@ -460,6 +461,8 @@ if (synth && synth.getVoices().length === 0) {
 // --- Speech Recognition Setup ---
 const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition || null;
 let recognition = null; // Holds the SpeechRecognition instance
+let currentListeningPhase = null; // 'memory' | 'choice' | null
+let lastTranscript = ""; // Stores the most recent transcript while holding the button
 
 
 // --- Helper Functions ---
@@ -702,12 +705,12 @@ function updateVoiceButtonUI() {
          // Default button state
         voiceButton.classList.add('bg-accent', 'hover:bg-accent-dark');
         if (isMemoryCheckPhase) {
-            voiceButton.textContent = 'Speak English Text 🎤';
-            voiceStatusEl.textContent = "Click button above to speak the English text you heard.";
+            voiceButton.textContent = 'Hold to Speak English Text 🎤';
+            voiceStatusEl.textContent = "Hold the button while you repeat the English text.";
             voiceStatusEl.className = 'text-highlight';
         } else if (isChoiceSpeakingPhase) {
-            voiceButton.textContent = 'Speak Choice 🎤';
-            voiceStatusEl.textContent = "Click button above to speak your choice.";
+            voiceButton.textContent = 'Hold to Speak Choice 🎤';
+            voiceStatusEl.textContent = "Hold the button while you say your choice.";
              voiceStatusEl.className = 'text-info';
         } else {
              // Button shouldn't normally be active here unless end/error
@@ -910,6 +913,11 @@ function initializeSpeechRecognition() {
 
         recognition.onstart = () => {
             isListening = true;
+            if (shouldStopAfterStart) {
+                console.log('[SpeechRec] Stop requested before start; stopping immediately.');
+                shouldStopAfterStart = false;
+                try { recognition.stop(); } catch (e) { console.warn('[SpeechRec] Error stopping after delayed start:', e); }
+            }
             updateVoiceButtonUI();
             console.log('[SpeechRec] Event: onstart');
         };
@@ -923,19 +931,7 @@ function initializeSpeechRecognition() {
                  console.warn("[SpeechRec] onresult: Received empty/malformed results.");
             }
             console.log(`[SpeechRec] Recognized: "${transcript}"`);
-
-             // Stop listening once we have a result
-             if (recognition && isListening) {
-                 try { recognition.stop(); } catch(e) { console.warn("Error stopping recognition after result:", e); }
-             }
-
-            if (isMemoryCheckPhase) {
-                processMemoryCheckResult(transcript);
-            } else if (isChoiceSpeakingPhase) {
-                processChoiceSpeechResult(transcript);
-            } else {
-                 console.warn("[SpeechRec] Received result in unexpected phase.");
-            }
+            lastTranscript = transcript; // Keep updating while the user holds the button
         };
 
         recognition.onerror = (event) => {
@@ -960,7 +956,19 @@ function initializeSpeechRecognition() {
         recognition.onend = () => {
             console.log('[SpeechRec] Event: onend');
             isListening = false;
+            shouldStopAfterStart = false;
             updateVoiceButtonUI(); // Reset button state after listening stops
+            if (lastTranscript) {
+                if (currentListeningPhase === 'memory') {
+                    processMemoryCheckResult(lastTranscript);
+                } else if (currentListeningPhase === 'choice') {
+                    processChoiceSpeechResult(lastTranscript);
+                } else {
+                    console.warn('[SpeechRec] Transcript received with no active phase.');
+                }
+            }
+            currentListeningPhase = null;
+            lastTranscript = "";
         };
 
          console.log("[SpeechRec] Initialization complete.");
@@ -1330,6 +1338,7 @@ function displayScene(sceneId) {
     if (recognition && isListening) {
         try { recognition.abort(); } catch (e) {}
         isListening = false;
+        shouldStopAfterStart = false;
     }
     sceneTextEl.classList.remove('speaking', 'memory-recall-active');
 
@@ -1532,6 +1541,7 @@ function handleChoice(choiceData) {
      if (recognition && isListening) {
          try { recognition.abort(); } catch(e) {}
          isListening = false;
+        shouldStopAfterStart = false;
      }
      sceneTextEl.classList.remove('speaking', 'memory-recall-active');
 
@@ -1562,9 +1572,9 @@ function handleChoice(choiceData) {
 
 // --- Event Listener Setup ---
 
-/** Handles clicks on the main voice action button */
-function handleVoiceButtonClick() {
-    console.log(`[Voice Button] Clicked. MemoryPhase: ${isMemoryCheckPhase}, ChoicePhase: ${isChoiceSpeakingPhase}, Listening: ${isListening}`);
+/** Starts recognition while the voice button is held down */
+function startVoiceButtonHold() {
+    console.log(`[Voice Button] Hold start. MemoryPhase: ${isMemoryCheckPhase}, ChoicePhase: ${isChoiceSpeakingPhase}, Listening: ${isListening}`);
 
     if (!recognition) {
         console.error("[Voice Button] Recognition not initialized.");
@@ -1576,68 +1586,82 @@ function handleVoiceButtonClick() {
         console.warn("[Voice Button] Mic permission not granted.");
         voiceStatusEl.textContent = "Microphone access needed.";
         voiceStatusEl.className = 'text-danger';
-        // requestMicPermission(); // Optionally re-request?
         return;
     }
 
     if (isListening) {
-        console.log("[Voice Button] Currently listening, stopping recognition.");
+        return; // Already active from a previous hold
+    }
+
+    lastTranscript = ""; // Reset previous transcript
+    shouldStopAfterStart = false; // Reset stop latch for new hold
+
+    if (isMemoryCheckPhase) {
+        console.log("[Voice Button] Starting memory recall recognition.");
+        currentListeningPhase = 'memory';
+        if (formattedUkrainianTextForMemoryCheck) {
+            sceneTextEl.innerHTML = formattedUkrainianTextForMemoryCheck;
+        } else {
+            sceneTextEl.innerHTML = "<p class='text-highlight p-2 text-center'>Translation not available.<br/>Recall the English text.</p>";
+        }
+        sceneTextEl.classList.add('memory-recall-active');
+        setVocabListVisibility(false);
+        setChoicesVisibility(false);
+
+        try {
+            recognition.lang = 'en-US';
+            recognition.start();
+        } catch (e) {
+            console.error("[Voice Button] Error starting memory recognition:", e);
+            sceneTextEl.innerHTML = formattedEnglishSceneText;
+            sceneTextEl.classList.remove('memory-recall-active');
+            setVocabListVisibility(true);
+            voiceStatusEl.textContent = "Error starting voice input.";
+            voiceStatusEl.className = 'text-danger';
+            isListening = false;
+            currentListeningPhase = null;
+            updateVoiceButtonUI();
+        }
+    } else if (isChoiceSpeakingPhase) {
+        console.log("[Voice Button] Starting choice speaking recognition.");
+        currentListeningPhase = 'choice';
+        setChoicesVisibility(false);
+        voiceStatusEl.textContent = "Listening for your choice...";
+
+        try {
+            recognition.lang = 'en-US';
+            recognition.start();
+        } catch (e) {
+            console.error("[Voice Button] Error starting choice recognition:", e);
+            voiceStatusEl.textContent = "Error starting voice input.";
+            voiceStatusEl.className = 'text-danger';
+            isListening = false;
+            currentListeningPhase = null;
+            updateVoiceButtonUI();
+        }
+    } else {
+        console.warn("[Voice Button] Hold detected in unexpected state (not memory or choice phase).");
+    }
+}
+
+/** Stops recognition when the voice button is released */
+function stopVoiceButtonHold() {
+    console.log('[Voice Button] Hold end.');
+    if (!recognition) return;
+
+    if (isListening) {
         try {
             recognition.stop();
         } catch (e) {
             console.warn("[Voice Button] Error stopping recognition:", e);
         }
-        // onend will handle UI update
     } else {
-        // If not listening, start based on phase
-        if (isMemoryCheckPhase) {
-            console.log("[Voice Button] Starting memory recall recognition.");
-            // Hide English text, show Ukrainian/Placeholder
-            if (formattedUkrainianTextForMemoryCheck) {
-                sceneTextEl.innerHTML = formattedUkrainianTextForMemoryCheck;
-            } else {
-                sceneTextEl.innerHTML = "<p class='text-highlight p-2 text-center'>Translation not available.<br/>Recall the English text.</p>";
-            }
-            sceneTextEl.classList.add('memory-recall-active');
-            setVocabListVisibility(false); // Hide vocab during recall attempt
-            setChoicesVisibility(false); // Ensure choices definitely hidden
-
-            try {
-                recognition.lang = 'en-US'; // Ensure English for recall
-                recognition.start();
-            } catch (e) {
-                console.error("[Voice Button] Error starting memory recognition:", e);
-                // Restore UI if start fails
-                sceneTextEl.innerHTML = formattedEnglishSceneText;
-                sceneTextEl.classList.remove('memory-recall-active');
-                setVocabListVisibility(true);
-                voiceStatusEl.textContent = "Error starting voice input.";
-                voiceStatusEl.className = 'text-danger';
-                isListening = false;
-                updateVoiceButtonUI();
-            }
-        } else if (isChoiceSpeakingPhase) {
-            console.log("[Voice Button] Starting choice speaking recognition.");
-
-            // *** HIDE CHOICES BEFORE LISTENING FOR CHOICE ***
-            setChoicesVisibility(false);
-            voiceStatusEl.textContent = "Listening for your choice..."; // Update status prompt
-
-            try {
-                recognition.lang = 'en-US'; // Ensure English for choice
-                recognition.start();
-            } catch (e) {
-                console.error("[Voice Button] Error starting choice recognition:", e);
-                voiceStatusEl.textContent = "Error starting voice input.";
-                voiceStatusEl.className = 'text-danger';
-                // Show choices again if listening fails? Or keep hidden? Let's keep hidden.
-                // setChoicesVisibility(true);
-                isListening = false;
-                updateVoiceButtonUI();
-            }
-        } else {
-            console.warn("[Voice Button] Clicked in unexpected state (not memory or choice phase).");
-            // Maybe it's an end scene? Button should be disabled.
+        // If release happens before the API fires onstart, mark for immediate stop
+        shouldStopAfterStart = true;
+        try {
+            recognition.stop();
+        } catch (e) {
+            console.warn('[Voice Button] Error stopping recognition before start:', e);
         }
     }
 }
@@ -1891,10 +1915,16 @@ async function startGame() {
      // Request Microphone Permission (only if needed and possible)
      await requestMicPermission();
 
-     // Attach the single click listener to the voice button
-     voiceButton.removeEventListener('click', handleVoiceButtonClick); // Remove old first
-     voiceButton.addEventListener('click', handleVoiceButtonClick);
-     console.log("[Init] Voice button click listener attached.");
+    // Attach hold-to-speak listeners to the voice button
+    ['pointerdown', 'touchstart'].forEach(evt => voiceButton.removeEventListener(evt, startVoiceButtonHold));
+    ['pointerup', 'pointerleave', 'touchend', 'touchcancel'].forEach(evt => voiceButton.removeEventListener(evt, stopVoiceButtonHold));
+    voiceButton.addEventListener('pointerdown', startVoiceButtonHold);
+    voiceButton.addEventListener('pointerup', stopVoiceButtonHold);
+    voiceButton.addEventListener('pointerleave', stopVoiceButtonHold);
+    voiceButton.addEventListener('touchstart', startVoiceButtonHold);
+    voiceButton.addEventListener('touchend', stopVoiceButtonHold);
+    voiceButton.addEventListener('touchcancel', stopVoiceButtonHold);
+    console.log("[Init] Voice button hold listeners attached.");
 
 
      // Final update to button UI after permissions etc.
