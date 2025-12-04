@@ -432,6 +432,7 @@ let memoryCheckPassed = false; // Did the player succeed in the last memory chec
 let ttsUnlocked = false; // Has the user interaction unlocked text-to-speech?
 let micPermissionGranted = null; // null: unknown, true: granted, false: denied
 let isListening = false; // Is the speech recognition actively listening?
+let voiceListenersAttached = false; // Prevent attaching press/hold handlers twice
 
 const MEMORY_SIMILARITY_THRESHOLD = 0.50; // Required similarity (0-1) for memory check
 
@@ -1562,9 +1563,9 @@ function handleChoice(choiceData) {
 
 // --- Event Listener Setup ---
 
-/** Handles clicks on the main voice action button */
-function handleVoiceButtonClick() {
-    console.log(`[Voice Button] Clicked. MemoryPhase: ${isMemoryCheckPhase}, ChoicePhase: ${isChoiceSpeakingPhase}, Listening: ${isListening}`);
+// action: 'start' when button is pressed, 'stop' when released
+function handleVoiceButtonClick(action) {
+    console.log(`[Voice Button] ${action} | MemoryPhase: ${isMemoryCheckPhase}, ChoicePhase: ${isChoiceSpeakingPhase}, Listening: ${isListening}`);
 
     if (!recognition) {
         console.error("[Voice Button] Recognition not initialized.");
@@ -1576,68 +1577,74 @@ function handleVoiceButtonClick() {
         console.warn("[Voice Button] Mic permission not granted.");
         voiceStatusEl.textContent = "Microphone access needed.";
         voiceStatusEl.className = 'text-danger';
-        // requestMicPermission(); // Optionally re-request?
         return;
     }
 
-    if (isListening) {
-        console.log("[Voice Button] Currently listening, stopping recognition.");
-        try {
-            recognition.stop();
-        } catch (e) {
-            console.warn("[Voice Button] Error stopping recognition:", e);
+    if (action === 'stop') {
+        // stop listening when button is released
+        if (isListening) {
+            console.log("[Voice Button] Stopping recognition (button released).");
+            try {
+                recognition.stop();
+            } catch (e) {
+                console.warn("[Voice Button] Error stopping recognition:", e);
+            }
         }
-        // onend will handle UI update
-    } else {
-        // If not listening, start based on phase
-        if (isMemoryCheckPhase) {
-            console.log("[Voice Button] Starting memory recall recognition.");
-            // Hide English text, show Ukrainian/Placeholder
-            if (formattedUkrainianTextForMemoryCheck) {
-                sceneTextEl.innerHTML = formattedUkrainianTextForMemoryCheck;
-            } else {
-                sceneTextEl.innerHTML = "<p class='text-highlight p-2 text-center'>Translation not available.<br/>Recall the English text.</p>";
-            }
-            sceneTextEl.classList.add('memory-recall-active');
-            setVocabListVisibility(false); // Hide vocab during recall attempt
-            setChoicesVisibility(false); // Ensure choices definitely hidden
+        return;
+    }
 
-            try {
-                recognition.lang = 'en-US'; // Ensure English for recall
-                recognition.start();
-            } catch (e) {
-                console.error("[Voice Button] Error starting memory recognition:", e);
-                // Restore UI if start fails
-                sceneTextEl.innerHTML = formattedEnglishSceneText;
-                sceneTextEl.classList.remove('memory-recall-active');
-                setVocabListVisibility(true);
-                voiceStatusEl.textContent = "Error starting voice input.";
-                voiceStatusEl.className = 'text-danger';
-                isListening = false;
-                updateVoiceButtonUI();
-            }
-        } else if (isChoiceSpeakingPhase) {
-            console.log("[Voice Button] Starting choice speaking recognition.");
+    // --- action === 'start': start listening only while button is held ---
+    if (isListening) {
+        // already listening, ignore extra press
+        return;
+    }
 
-            // *** HIDE CHOICES BEFORE LISTENING FOR CHOICE ***
-            setChoicesVisibility(false);
-            voiceStatusEl.textContent = "Listening for your choice..."; // Update status prompt
+    if (!isMemoryCheckPhase && !isChoiceSpeakingPhase) {
+        console.warn("[Voice Button] Pressed outside memory/choice phase.");
+        return;
+    }
 
-            try {
-                recognition.lang = 'en-US'; // Ensure English for choice
-                recognition.start();
-            } catch (e) {
-                console.error("[Voice Button] Error starting choice recognition:", e);
-                voiceStatusEl.textContent = "Error starting voice input.";
-                voiceStatusEl.className = 'text-danger';
-                // Show choices again if listening fails? Or keep hidden? Let's keep hidden.
-                // setChoicesVisibility(true);
-                isListening = false;
-                updateVoiceButtonUI();
-            }
+    if (isMemoryCheckPhase) {
+        console.log("[Voice Button] Starting memory recall recognition (hold).");
+        if (formattedUkrainianTextForMemoryCheck) {
+            sceneTextEl.innerHTML = formattedUkrainianTextForMemoryCheck;
         } else {
-            console.warn("[Voice Button] Clicked in unexpected state (not memory or choice phase).");
-            // Maybe it's an end scene? Button should be disabled.
+            sceneTextEl.innerHTML = "<p class='text-highlight p-2 text-center'>Translation not available.<br/>Recall the English text.</p>";
+        }
+        sceneTextEl.classList.add('memory-recall-active');
+        setVocabListVisibility(false);
+        setChoicesVisibility(false);
+
+        try {
+            recognition.lang = 'en-US';
+            recognition.start();
+            voiceStatusEl.textContent = "Hold the button and say the English text...";
+            voiceStatusEl.className = 'text-info';
+        } catch (e) {
+            console.error("[Voice Button] Error starting memory recognition:", e);
+            sceneTextEl.innerHTML = formattedEnglishSceneText;
+            sceneTextEl.classList.remove('memory-recall-active');
+            setVocabListVisibility(true);
+            voiceStatusEl.textContent = "Error starting voice input.";
+            voiceStatusEl.className = 'text-danger';
+            isListening = false;
+            updateVoiceButtonUI();
+        }
+    } else if (isChoiceSpeakingPhase) {
+        console.log("[Voice Button] Starting choice speaking recognition (hold).");
+        setChoicesVisibility(false); // hide choices while speaking
+
+        try {
+            recognition.lang = 'en-US';
+            recognition.start();
+            voiceStatusEl.textContent = "Hold the button and say your choice...";
+            voiceStatusEl.className = 'text-info';
+        } catch (e) {
+            console.error("[Voice Button] Error starting choice recognition:", e);
+            voiceStatusEl.textContent = "Error starting voice input.";
+            voiceStatusEl.className = 'text-danger';
+            isListening = false;
+            updateVoiceButtonUI();
         }
     }
 }
@@ -1891,10 +1898,28 @@ async function startGame() {
      // Request Microphone Permission (only if needed and possible)
      await requestMicPermission();
 
-     // Attach the single click listener to the voice button
-     voiceButton.removeEventListener('click', handleVoiceButtonClick); // Remove old first
-     voiceButton.addEventListener('click', handleVoiceButtonClick);
-     console.log("[Init] Voice button click listener attached.");
+    // Attach press-and-hold listeners to the voice button (only once)
+    if (!voiceListenersAttached) {
+        const startEvents = ['mousedown', 'touchstart'];
+        const stopEvents  = ['mouseup', 'mouseleave', 'touchend', 'touchcancel'];
+
+        startEvents.forEach(ev => {
+            voiceButton.addEventListener(ev, (e) => {
+                e.preventDefault();
+                handleVoiceButtonClick('start');
+            });
+        });
+
+        stopEvents.forEach(ev => {
+            voiceButton.addEventListener(ev, (e) => {
+                e.preventDefault();
+                handleVoiceButtonClick('stop');
+            });
+        });
+
+        voiceListenersAttached = true;
+        console.log("[Init] Voice button press-and-hold listeners attached.");
+    }
 
 
      // Final update to button UI after permissions etc.
