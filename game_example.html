@@ -1663,10 +1663,10 @@ function stopVoiceButtonHold() {
         } catch (e) {
             console.warn('[Voice Button] Error stopping recognition before start:', e);
         }
-    } else {
-        currentListeningPhase = null;
-        lastTranscript = "";
     }
+
+    currentListeningPhase = null;
+    lastTranscript = "";
 }
 
 // --- Replace existing addRestartButton function ---
