@@ -1663,10 +1663,10 @@ function stopVoiceButtonHold() {
         } catch (e) {
             console.warn('[Voice Button] Error stopping recognition before start:', e);
         }
-    } else {
-        currentListeningPhase = null;
-        lastTranscript = "";
     }
+
+    currentListeningPhase = null;
+    lastTranscript = "";
 }
 
 // --- Replace existing addRestartButton function ---
@@ -1905,14 +1905,21 @@ async function startGame() {
     isChoiceSpeakingPhase = false;
     memoryCheckPassed = false;
 
-     // Ensure voices are loaded before selecting
+     // Ensure voices are loaded before selecting (with timeout fallback)
      if (synth.getVoices().length === 0 && voicesLoaded === false) {
-         console.log("[Init] Waiting for voices to load...");
-         await new Promise(resolve => {
-             if (voicesLoaded) resolve(); // Already loaded by the time we check
-             else synth.addEventListener('voiceschanged', resolve, { once: true });
-         });
-         console.log("[Init] Voices loaded.");
+         console.log("[Init] Waiting for voices to load (with timeout)...");
+         await Promise.race([
+             new Promise(resolve => {
+                 if (voicesLoaded) resolve(); // Already loaded by the time we check
+                 else synth.addEventListener('voiceschanged', resolve, { once: true });
+             }),
+             new Promise(resolve => setTimeout(resolve, 2000)) // Avoid hanging forever
+         ]);
+         if (!voicesLoaded && synth.getVoices().length === 0) {
+             console.warn("[Init] Voices did not load before timeout. Proceeding with default voice.");
+         } else {
+             console.log("[Init] Voices loaded.");
+         }
      }
      selectedVoice = getBestVoice();
      console.log("[Init] Selected TTS voice:", selectedVoice ? selectedVoice.name : "default");
