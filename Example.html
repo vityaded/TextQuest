@@ -1,0 +1,251 @@
+const gameData = {
+  'start': {
+    text: {
+      en: "It is morning in the small house. Gromit's alarm clock rings. Gromit the dog is awake. Today is his birthday. Wallace comes into the room with a smile.",
+      ua: "Ранок у маленькому будинку. Будильник Ґроміта дзвонить. Собака Ґроміт уже прокинувся. Сьогодні його день народження. Воллес заходить до кімнати з усмішкою."
+    },
+    choices: [
+      { text: "Gromit goes downstairs for breakfast.", nextScene: 'scene_1' },
+      { text: "Gromit stays upstairs in his room.", nextScene: 'scene_2' }
+    ]
+  },
+
+  'scene_1': {
+    text: {
+      en: "Gromit goes downstairs. Wallace makes breakfast with cheese and toast. Wallace reads a bill in the newspaper. The bill for the rent is big. \"We need more money,\" he says. Suddenly there is a knock on the door.",
+      ua: "Ґроміт спускається вниз. Воллес готує сніданок із сиром і тостом. Воллес читає рахунок у газеті. Рахунок за оренду великий. \"Нам потрібно більше грошей\", — каже він. Раптом у двері стукають."
+    },
+    choices: [
+      { text: "Gromit opens the door.", nextScene: 'scene_3' },
+      { text: "Gromit goes back upstairs to his room.", nextScene: 'scene_2' }
+    ]
+  },
+
+  'scene_2': {
+    text: {
+      en: "Gromit stays upstairs in his room. He looks at the wall and the old wallpaper. He sees the rain at the window and hears thunder far away. Downstairs he hears voices and the door. Gromit feels a little lonely.",
+      ua: "Ґроміт залишається нагорі у своїй кімнаті. Він дивиться на стіну й старі шпалери. Він бачить дощ у вікні й чує грім десь далеко. Внизу він чує голоси й двері. Ґроміт почувається трохи самотнім."
+    },
+    choices: [
+      { text: "Gromit goes downstairs to see who is there.", nextScene: 'scene_3' },
+      { text: "Gromit does nothing and just stays in his room.", nextScene: 'end_fail_diamond_stolen' }
+    ]
+  },
+
+  'scene_3': {
+    text: {
+      en: "Gromit comes to the door. A small penguin pet is outside with a suitcase. Wallace smiles. \"He is our new lodger,\" he says. \"Now we can pay the rent.\" The penguin is very quiet and only looks back at Gromit.",
+      ua: "Ґроміт підходить до дверей. Ззовні стоїть маленький пінгвін із валізою. Воллес усміхається. \"Це наш новий квартирант\", — каже він. \"Тепер ми зможемо заплатити оренду\". Пінгвін дуже тихий і лише дивиться на Ґроміта."
+    },
+    choices: [
+      { text: "Gromit helps the penguin carry the suitcase to his room.", nextScene: 'penguin_room' },
+      { text: "Gromit walks away quietly and lets Wallace show the room.", nextScene: 'penguin_room' }
+    ]
+  },
+
+  'penguin_room': {
+    text: {
+      en: "The penguin moves into Gromit's old room upstairs. Gromit now sleeps downstairs in a small corner. He is not happy. One morning Wallace brings strange electric trousers. \"Birthday present!\" he says. The trousers can walk on the wall and even upside down.",
+      ua: "Пінгвін переїжджає до старої кімнати Ґроміта нагорі. Тепер Ґроміт спить унизу в маленькому кутку. Він не щасливий. Одного ранку Воллес приносить дивні електричні штани. \"Подарунок на день народження!\" — каже він. Штани можуть ходити по стіні й навіть догори дриґом."
+    },
+    choices: [
+      { text: "Gromit puts on the trousers first.", nextScene: 'trousers_fun' },
+      { text: "The penguin puts on the trousers first.", nextScene: 'penguin_plan' }
+    ]
+  },
+
+  'trousers_fun': {
+    text: {
+      en: "Gromit puts on the trousers. They walk by themselves. He walks on the wall and on the ceiling. Wallace laughs. The penguin stands quietly and holds a small remote to control the trousers. Gromit sees a notebook in the penguin's wing.",
+      ua: "Ґроміт надягає штани. Вони самі ходять. Він ходить по стіні й по стелі. Воллес сміється. Пінгвін тихо стоїть і тримає маленький пульт, щоб керувати штанами. Ґроміт бачить у крилі пінгвіна зошит."
+    },
+    choices: [
+      { text: "Gromit reads the penguin's notebook.", nextScene: 'penguin_plan' },
+      { text: "Gromit is tired and goes to sleep downstairs.", nextScene: 'end_fail_diamond_stolen' }
+    ]
+  },
+
+  'penguin_plan': {
+    text: {
+      en: "When the room is empty, Gromit opens the notebook. He sees a plan of the city museum. There is a picture of a big diamond on the roof window. The wrong trousers walk up the wall in the plan. Gromit understands: the penguin is a clever thief. There is also a note about a reward at the police station.",
+      ua: "Коли кімната порожня, Ґроміт відкриває зошит. Він бачить план міського музею. Там є малюнок великого діаманта в вікні на даху. На плані неправильні штани йдуть угору по стіні. Ґроміт розуміє: пінгвін — розумний злодій. Є також запис про винагороду в поліцейській дільниці."
+    },
+    choices: [
+      { text: "Gromit waits and watches the penguin at night.", nextScene: 'night_watch' },
+      { text: "Gromit runs to the police station at once.", nextScene: 'end_fail_diamond_stolen' }
+    ]
+  },
+
+  'night_watch': {
+    text: {
+      en: "It is late at night. Rain falls on the roof and there is loud thunder. Gromit is awake and watches from the window. The penguin puts on the wrong trousers and quietly goes downstairs. He leaves the house and walks towards the museum.",
+      ua: "Пізня ніч. На дах падає дощ, і чути гучний грім. Ґроміт не спить і дивиться з вікна. Пінгвін надягає неправильні штани й тихо спускається вниз. Він виходить із будинку й іде до музею."
+    },
+    choices: [
+      { text: "Gromit follows the penguin alone.", nextScene: 'museum_roof' },
+      { text: "Gromit wakes Wallace first.", nextScene: 'end_fail_gromit_captured' }
+    ]
+  },
+
+  'museum_roof': {
+    text: {
+      en: "Gromit comes to the high museum. The penguin uses the trousers to walk up the wall. He reaches a small roof window above. Gromit finds a ladder and puts it above the dustbin. He climbs carefully after the thief. Through the window he sees the diamond inside.",
+      ua: "Ґроміт приходить до високого музею. Пінгвін використовує штани, щоб іти по стіні вгору. Він доходить до маленького вікна на даху. Ґроміт знаходить драбину й ставить її над сміттям. Він обережно лізе за злодієм. Через вікно він бачить усередині діамант."
+    },
+    choices: [
+      { text: "Gromit climbs through the roof window into the museum.", nextScene: 'museum_inside' },
+      { text: "Gromit stays on the roof and waits for the police.", nextScene: 'end_fail_diamond_stolen' }
+    ]
+  },
+
+  'museum_inside': {
+    text: {
+      en: "Inside the museum it is dark and quiet. Gromit walks on a small ledge above the floor. Below, the penguin opens a security door and a trap door. Thin red lines from a laser beam shine near the diamond. The penguin uses a drill and then takes the diamond and puts it in a sack.",
+      ua: "Усередині музею темно й тихо. Ґроміт іде по вузькому виступу над підлогою. Внизу пінгвін відкриває двері безпеки й потайні двері. Біля діаманта світяться тонкі червоні лінії від лазерного променя. Пінгвін користується дрилем, а потім бере діамант і кладе його в мішок."
+    },
+    choices: [
+      { text: "Gromit follows the thief back to the little train track.", nextScene: 'train_chase' },
+      { text: "Gromit stops and waits in the dark room.", nextScene: 'end_fail_diamond_stolen' }
+    ]
+  },
+
+  'train_chase': {
+    text: {
+      en: "Back at the house there is a toy train track on the floor. The penguin rides in a small wagon with the sack and the diamond. He has a toy gun. Gromit jumps into another wagon and follows on the track. There are points in the track in front of him.",
+      ua: "Удома на підлозі лежать рейки іграшкового потяга. Пінгвін їде в маленькому вагончику з мішком і діамантом. У нього є іграшковий пістолет. Ґроміт стрибає в інший вагончик і мчить по рейках за ним. Попереду на рейках є стрілки."
+    },
+    choices: [
+      { text: "Gromit quickly changes the points on the track.", nextScene: 'end_success' },
+      { text: "Gromit does not change the points.", nextScene: 'end_fail_gromit_captured' }
+    ]
+  },
+
+  'end_fail_diamond_stolen': {
+    text: {
+      en: "Gromit is too slow and does not stop the plan. The clever penguin thief escapes with the diamond. Next day the newspaper talks about the calamity at the museum. There is a big reward at the police station, but Gromit and Wallace get nothing. <span class='game-over'>FAILED (the diamond is gone)</span>",
+      ua: "Ґроміт занадто повільний і не зупиняє план. Розумний пінгвін-злодій тікає з діамантом. Наступного дня газета пише про лихо в музеї. У поліцейській дільниці обіцяють велику винагороду, але Ґроміт і Воллес нічого не отримують. <span class='game-over'>ПРОВАЛ (діамант зник)</span>"
+    },
+    choices: [
+      { text: "Play again from the start.", nextScene: 'start' }
+    ]
+  },
+
+  'end_fail_gromit_captured': {
+    text: {
+      en: "Things go wrong for Gromit. The penguin sees him and shoots with the toy gun. Gromit falls from the wagon and gets stuck under a heavy box. Later he wakes up in a small room like a prison. The thief and the diamond are far away. <span class='game-over'>FAILED (Gromit is captured)</span>",
+      ua: "У Ґроміта все йде не так. Пінгвін бачить його й стріляє з іграшкового пістолета. Ґроміт падає з вагончика й застрягає під важкою коробкою. Пізніше він прокидається в маленькій кімнаті, схожій на в'язницю. Злодій і діамант уже далеко. <span class='game-over'>ПРОВАЛ (Ґроміта спіймали)</span>"
+    },
+    choices: [
+      { text: "Try again from the start.", nextScene: 'start' }
+    ]
+  },
+
+  'end_success': {
+    text: {
+      en: "Gromit changes the points just in time. The penguin wagon goes onto a new track and hits the wall. The thief flies into the air vent and gets stuck. The police take him to the police station and the diamond is safe in the museum. Wallace uses the reward to pay the bill and the rent. At home Gromit gets cheese, a warm room, and nice new wallpaper. <span class='game-success'>THE END</span>",
+      ua: "Ґроміт вчасно переводить стрілки. Вагончик пінгвіна їде на іншу колію й врізається в стіну. Злодій злітає в повітряний вентиляційний отвір і застрягає. Поліція відвозить його до поліцейської дільниці, і діамант у музеї в безпеці. Воллес використовує винагороду, щоб заплатити рахунок і оренду. Удома Ґроміт отримує сир, теплу кімнату й гарні нові шпалери. <span class='game-success'>КІНЕЦЬ</span>"
+    },
+    choices: [
+      { text: "Play again from the start.", nextScene: 'start' }
+    ]
+  }
+}; // End of gameData
+
+// --- Vocabulary Data ---  words from the story
+const vocabulary = [
+  "alarm clock",
+  "awake",
+  "birthday",
+  "breakfast",
+  "bill",
+  "rent",
+  "money",
+  "room",
+  "upstairs",
+  "downstairs",
+  "door",
+  "wall",
+  "window",
+  "wallpaper",
+  "rain",
+  "thunder",
+  "dog",
+  "pet",
+  "owner",
+  "trousers",
+  "walk",
+  "upside down",
+  "museum",
+  "diamond",
+  "plan",
+  "notebook",
+  "police station",
+  "thief",
+  "reward",
+  "ladder",
+  "drill",
+  "electric",
+  "security door",
+  "trap door",
+  "laser beam",
+  "sack",
+  "track",
+  "wagon",
+  "gun",
+  "escape",
+  "air vent",
+  "prison",
+  "cheese",
+  "get stuck",
+  "friend",
+  "calamity"
+];
+
+const vocabTranslations = {
+  "alarm clock": "будильник",
+  "awake": "прокинутий",
+  "birthday": "день народження",
+  "breakfast": "сніданок",
+  "bill": "рахунок",
+  "rent": "оренда",
+  "money": "гроші",
+  "room": "кімната",
+  "upstairs": "нагорі",
+  "downstairs": "внизу",
+  "door": "двері",
+  "wall": "стіна",
+  "window": "вікно",
+  "wallpaper": "шпалери",
+  "rain": "дощ",
+  "thunder": "грім",
+  "dog": "собака",
+  "pet": "улюбленець",
+  "owner": "господар",
+  "trousers": "штани",
+  "walk": "ходити",
+  "upside down": "догори дриґом",
+  "museum": "музей",
+  "diamond": "діамант",
+  "plan": "план",
+  "notebook": "зошит",
+  "police station": "поліційна дільниця",
+  "thief": "злодій",
+  "reward": "нагорода",
+  "ladder": "драбина",
+  "drill": "дриль",
+  "electric": "електричний",
+  "security door": "двері безпеки",
+  "trap door": "потайні двері",
+  "laser beam": "лазерний промінь",
+  "sack": "мішок",
+  "track": "рейки",
+  "wagon": "вагончик",
+  "gun": "пістолет",
+  "escape": "втекти",
+  "air vent": "повітряний вентиляційний отвір",
+  "prison": "в'язниця",
+  "cheese": "сир",
+  "get stuck": "застрягати",
+  "friend": "друг",
+  "calamity": "лихо"
+};
