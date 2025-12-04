@@ -1725,9 +1725,14 @@ startChallengeBtn.addEventListener('click', () => {
     console.log("[DEBUG] Checking synth support...");
     if (!synth) {
         console.error("[DEBUG] Speech synthesis NOT SUPPORTED.");
-        alert("Speech synthesis not supported by this browser.");
+        alert("Speech synthesis not supported by this browser. Starting without TTS...");
         startChallengeBtn.textContent = 'Audio Not Supported';
-        // Button remains disabled
+        startChallengeBtn.classList.remove('bg-accent', 'hover:bg-accent-dark');
+        startChallengeBtn.classList.add('audio-enabled', 'bg-danger');
+
+        // Proceed with game flow even without synth support so the challenge can start
+        ttsUnlocked = true;
+        setTimeout(startGame, 10);
         return;
     }
 
