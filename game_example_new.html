@@ -456,6 +456,10 @@ let userStoppedRecognition = false; // Track intentional stops to prevent auto-r
 
 const MEMORY_SIMILARITY_THRESHOLD = 0.50; // Required similarity (0-1) for memory check
 
+// NEW: buffers for one button hold
+let memoryTranscriptBuffer = "";
+let choiceTranscriptBuffer = "";
+
 // --- Text-to-Speech (TTS) Setup ---
 const synth = window.speechSynthesis;
 let currentUtterance = null;
@@ -904,20 +908,29 @@ function initializeSpeechRecognition() {
 
         recognition.onresult = (event) => {
             console.log('[SpeechRec] Event: onresult');
-            let transcript = "";
-            if (event.results && event.results[0] && event.results[0][0]) {
-                transcript = event.results[0][0].transcript.trim();
-            } else {
-                console.warn("[SpeechRec] onresult: Received empty/malformed results.");
+
+            // Collect only new, final results
+            const collected = [];
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+                const res = event.results[i];
+                if (!res || !res.isFinal || !res[0]) continue;
+                const piece = (res[0].transcript || "").trim();
+                if (piece) collected.push(piece);
             }
-            console.log(`[SpeechRec] Recognized: "${transcript}"`);
 
-            // Do NOT stop here. We keep listening while the button is held.
+            const transcript = collected.join(" ").trim();
+            if (!transcript) {
+                console.warn("[SpeechRec] onresult: empty transcript.");
+                return;
+            }
 
+            console.log(`[SpeechRec] Recognized chunk: "${transcript}"`);
+
+            // Accumulate into buffers – we will evaluate on button release (onend after stop)
             if (isMemoryCheckPhase) {
-                processMemoryCheckResult(transcript);
+                memoryTranscriptBuffer += (memoryTranscriptBuffer ? " " : "") + transcript;
             } else if (isChoiceSpeakingPhase) {
-                processChoiceSpeechResult(transcript);
+                choiceTranscriptBuffer += (choiceTranscriptBuffer ? " " : "") + transcript;
             } else {
                 console.warn("[SpeechRec] Received result in unexpected phase.");
             }
@@ -925,21 +938,33 @@ function initializeSpeechRecognition() {
 
         recognition.onerror = (event) => {
             console.error('[SpeechRec] Event: onerror - Error:', event.error, 'Message:', event.message);
+
+            // Silence benign errors; onend will handle restart if needed
+            if (event.error === 'no-speech' || event.error === 'aborted') {
+                console.log(`[SpeechRec] Non-critical error "${event.error}" – handled via onend.`);
+                return;
+            }
+
             let errorMessage = 'Speech recognition error';
             switch (event.error) {
-                case 'no-speech': errorMessage = 'No speech detected.'; break;
-                case 'audio-capture': errorMessage = 'Mic error. Check connection/permissions.'; break;
-                case 'not-allowed': errorMessage = 'Mic access denied.'; micPermissionGranted = false; break; // Update state
-                case 'network': errorMessage = 'Network error.'; break;
-                case 'aborted': errorMessage = 'Speech input stopped.'; break; // Less alarming
-                 case 'service-not-allowed': errorMessage = 'Speech service denied.'; break;
-                default: errorMessage = `Error: ${event.error || 'Unknown'}`;
+                case 'audio-capture':
+                    errorMessage = 'Mic error. Check connection/permissions.';
+                    break;
+                case 'not-allowed':
+                case 'service-not-allowed':
+                    errorMessage = 'Mic access denied.';
+                    micPermissionGranted = false;
+                    break;
+                case 'network':
+                    errorMessage = 'Network error.';
+                    break;
+                default:
+                    errorMessage = `Error: ${event.error || 'Unknown'}`;
             }
-            if (event.error !== 'aborted') { // Don't show status for manual aborts if possible
-                voiceStatusEl.textContent = `Error: ${errorMessage}`;
-                voiceStatusEl.className = 'text-danger';
-            }
-            // Let onend handle final UI state reset
+
+            voiceStatusEl.textContent = `Error: ${errorMessage}`;
+            voiceStatusEl.className = 'text-danger';
+            // onend will still fire and clean UI; we do not restart here.
         };
 
         recognition.onend = () => {
@@ -948,8 +973,7 @@ function initializeSpeechRecognition() {
             updateVoiceButtonUI(); // Reset button state
 
             // If recognition ended *not* because we explicitly stopped,
-            // and the button is still held, and we are in a valid phase,
-            // restart recognition to keep listening while held.
+            // and the button is still held in a valid phase, restart seamlessly.
             if (
                 isHoldActive &&
                 micPermissionGranted !== false &&
@@ -963,10 +987,25 @@ function initializeSpeechRecognition() {
                 } catch (e) {
                     console.warn("[SpeechRec] Error restarting recognition in onend:", e);
                 }
+                return; // Still in the same "hold" – keep buffering.
             }
 
-            // Reset the flag after any end
-            userStoppedRecognition = false;
+            // If onend happened because the user released the button,
+            // process the accumulated transcript ONCE.
+            if (userStoppedRecognition) {
+                console.log('[SpeechRec] onend after user stop – processing buffered transcript.');
+
+                if (isMemoryCheckPhase) {
+                    processMemoryCheckResult(memoryTranscriptBuffer);
+                } else if (isChoiceSpeakingPhase) {
+                    processChoiceSpeechResult(choiceTranscriptBuffer);
+                }
+
+                // Clear buffers for the next interaction
+                memoryTranscriptBuffer = "";
+                choiceTranscriptBuffer = "";
+                userStoppedRecognition = false;
+            }
         };
 
          console.log("[SpeechRec] Initialization complete.");
@@ -1331,6 +1370,10 @@ function displayScene(sceneId) {
     originalEnglishTextForMemoryCheck = "";
     formattedUkrainianTextForMemoryCheck = "";
 
+    // NEW: clear recognition buffers
+    memoryTranscriptBuffer = "";
+    choiceTranscriptBuffer = "";
+
     // Stop any ongoing interactions
     if (synth?.speaking) synth.cancel();
     if (recognition && isListening) {
@@ -1619,6 +1662,14 @@ function handleVoiceButtonClick(action) {
 
     // --- action === 'start': start listening while button is held ---
     isHoldActive = true;
+    userStoppedRecognition = false;
+
+    // NEW: clear buffers for this new “hold”
+    if (isMemoryCheckPhase) {
+        memoryTranscriptBuffer = "";
+    } else if (isChoiceSpeakingPhase) {
+        choiceTranscriptBuffer = "";
+    }
 
     if (!isMemoryCheckPhase && !isChoiceSpeakingPhase) {
         console.warn("[Voice Button] Pressed outside memory/choice phase.");
