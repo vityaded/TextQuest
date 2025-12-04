@@ -464,6 +464,15 @@ let recognition = null; // Holds the SpeechRecognition instance
  * If a UA version is missing it will be filled on‑demand via Google‑Translate.
  */
 
+function normalise(str){
+  return (str||'')
+    .toLowerCase()
+    .replace(/[’'`]/g,'')          // drop apostrophes
+    .replace(/[\p{P}$+<=>^~]/gu,'')// drop punctuation
+    .replace(/\s+/g,' ')           // collapse spaces
+    .trim();
+}
+
  /* =========================================================================
    ❶  Make ALL English text nodes translatable
    ------------------------------------------------------------------------ */
@@ -475,11 +484,8 @@ let recognition = null; // Holds the SpeechRecognition instance
         NodeFilter.SHOW_TEXT,
         {
             acceptNode(node){
-                // skip empty / whitespace
                 if(!node.nodeValue || /^\s*$/.test(node.nodeValue)) return NodeFilter.FILTER_REJECT;
-                // only English letters?
                 if(!/[A-Za-z]/.test(node.nodeValue)) return NodeFilter.FILTER_REJECT;
-                // already wrapped?
                 if(node.parentNode && node.parentNode.classList &&
                    node.parentNode.classList.contains('translatable-sentence')){
                     return NodeFilter.FILTER_REJECT;
@@ -496,7 +502,13 @@ let recognition = null; // Holds the SpeechRecognition instance
     toWrap.forEach(node=>{
         const span = document.createElement('span');
         span.className = 'translatable-sentence';
-        span.dataset.en = node.nodeValue.trim();
+        const enText = node.nodeValue.trim();
+        span.dataset.en = enText;
+        // Allow quick inline vocabulary reuse when the full text is a vocab item
+        const vocabTranslation = vocabTranslations[normalise(enText)];
+        if (vocabTranslation) {
+            span.dataset.ua = vocabTranslation;
+        }
         span.textContent = node.nodeValue;
         node.parentNode.replaceChild(span,node);
     });
@@ -1173,6 +1185,13 @@ function findBestMatchChoice(transcript, choices) {
 
       async function translateENtoUA(en) {
         if (cacheTr[en]) return cacheTr[en];
+
+        const vocabUa = vocabTranslations[normalise(en)];
+        if (vocabUa) {
+          cacheTr[en] = vocabUa;
+          return vocabUa;
+        }
+
         const url =
           "https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=uk&dt=t&q=" +
           encodeURIComponent(en);
