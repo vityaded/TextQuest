@@ -893,6 +893,11 @@ function initializeSpeechRecognition() {
 
         recognition.onstart = () => {
             isListening = true;
+            // If recognition can start, we effectively have mic permission
+            // (permission prompts may not update the flag synchronously).
+            if (micPermissionGranted === null) {
+                micPermissionGranted = true;
+            }
             updateVoiceButtonUI();
             console.log('[SpeechRec] Event: onstart');
         };
@@ -947,7 +952,7 @@ function initializeSpeechRecognition() {
             // restart recognition to keep listening while held.
             if (
                 isHoldActive &&
-                micPermissionGranted &&
+                micPermissionGranted !== false &&
                 (isMemoryCheckPhase || isChoiceSpeakingPhase) &&
                 !userStoppedRecognition &&
                 recognition
