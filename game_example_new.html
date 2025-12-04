@@ -459,6 +459,7 @@ const MEMORY_SIMILARITY_THRESHOLD = 0.50; // Required similarity (0-1) for memor
 // NEW: buffers for all text said during ONE button hold
 let memoryTranscriptBuffer = "";
 let choiceTranscriptBuffer = "";
+let pendingInterimTranscript = ""; // Holds latest interim chunk while holding
 
 // --- Text-to-Speech (TTS) Setup ---
 const synth = window.speechSynthesis;
@@ -488,6 +489,28 @@ let recognition = null; // Holds the SpeechRecognition instance
 
 
 // --- Helper Functions ---
+
+/** Safely append recognized speech to the current phase buffer */
+function appendTranscriptToBuffer(transcript) {
+    if (!transcript) return;
+
+    if (isMemoryCheckPhase) {
+        memoryTranscriptBuffer += (memoryTranscriptBuffer ? " " : "") + transcript;
+    } else if (isChoiceSpeakingPhase) {
+        choiceTranscriptBuffer += (choiceTranscriptBuffer ? " " : "") + transcript;
+    } else {
+        console.warn("[SpeechRec] Received transcript outside an active phase.");
+    }
+}
+
+/** Flush the latest interim chunk into the proper buffer */
+function flushPendingInterim() {
+    if (!pendingInterimTranscript.trim()) return;
+
+    console.log(`[SpeechRec] Flushing interim chunk: "${pendingInterimTranscript}"`);
+    appendTranscriptToBuffer(pendingInterimTranscript);
+    pendingInterimTranscript = "";
+}
 
 // ----------  SENTENCE   WRAPPING  +  TRANSLATION  TOOLTIP  ----------------
 /**
@@ -890,9 +913,9 @@ function initializeSpeechRecognition() {
 
     try {
         recognition = new SpeechRecognitionAPI();
-        recognition.continuous = true; // Process single utterance
+        recognition.continuous = true; // Keep listening across pauses
         recognition.lang = 'en-US';
-        recognition.interimResults = false;
+        recognition.interimResults = true; // Capture interim phrases to avoid gaps
         recognition.maxAlternatives = 1;
 
         recognition.onstart = () => {
@@ -909,30 +932,39 @@ function initializeSpeechRecognition() {
         recognition.onresult = (event) => {
             console.log('[SpeechRec] Event: onresult');
 
-            // Collect only final pieces (in case there are multiple results)
-            const collected = [];
+            const finalChunks = [];
+            let interimChunk = "";
+
+            // Collect final + interim pieces (supports multiple results in one event)
             for (let i = event.resultIndex; i < event.results.length; i++) {
                 const res = event.results[i];
-                if (!res || !res.isFinal || !res[0]) continue;
+                if (!res || !res[0]) continue;
                 const piece = (res[0].transcript || "").trim();
-                if (piece) collected.push(piece);
+                if (!piece) continue;
+
+                if (res.isFinal) {
+                    finalChunks.push(piece);
+                } else {
+                    interimChunk = piece; // keep latest interim segment only
+                }
             }
 
-            const transcript = collected.join(" ").trim();
-            if (!transcript) {
+            const transcript = finalChunks.join(" ").trim();
+            const hasInterim = interimChunk.length > 0;
+
+            if (!transcript && !hasInterim) {
                 console.warn("[SpeechRec] onresult: empty transcript.");
                 return;
             }
 
-            console.log(`[SpeechRec] Recognized chunk: "${transcript}"`);
-
-            // Only accumulate. Evaluation will happen in onend after user releases.
-            if (isMemoryCheckPhase) {
-                memoryTranscriptBuffer += (memoryTranscriptBuffer ? " " : "") + transcript;
-            } else if (isChoiceSpeakingPhase) {
-                choiceTranscriptBuffer += (choiceTranscriptBuffer ? " " : "") + transcript;
-            } else {
-                console.warn("[SpeechRec] Received result in unexpected phase.");
+            if (transcript) {
+                console.log(`[SpeechRec] Recognized final chunk: "${transcript}"`);
+                appendTranscriptToBuffer(transcript);
+                // Final results supersede prior interim
+                pendingInterimTranscript = hasInterim ? interimChunk : "";
+            } else if (hasInterim) {
+                console.log(`[SpeechRec] Interim chunk: "${interimChunk}"`);
+                pendingInterimTranscript = interimChunk;
             }
         };
 
@@ -972,6 +1004,9 @@ function initializeSpeechRecognition() {
             isListening = false;
             updateVoiceButtonUI(); // Reset button state
 
+            // Make sure we don't drop any remaining interim speech before restarting/processing
+            flushPendingInterim();
+
             // If recognition ended *not* because we explicitly stopped,
             // and the button is still held, and we are in a valid phase,
             // restart recognition to keep listening while held (handle pauses).
@@ -1006,6 +1041,7 @@ function initializeSpeechRecognition() {
                 // Clear buffers for future holds
                 memoryTranscriptBuffer = "";
                 choiceTranscriptBuffer = "";
+                pendingInterimTranscript = "";
                 userStoppedRecognition = false;
             }
         };
@@ -1375,6 +1411,7 @@ function displayScene(sceneId) {
     // NEW: clear recognition buffers on each new scene
     memoryTranscriptBuffer = "";
     choiceTranscriptBuffer = "";
+    pendingInterimTranscript = "";
 
     // Stop any ongoing interactions
     if (synth?.speaking) synth.cancel();
@@ -1665,6 +1702,7 @@ function handleVoiceButtonClick(action) {
     // --- action === 'start': start listening while button is held ---
     isHoldActive = true;
     userStoppedRecognition = false;
+    pendingInterimTranscript = "";
 
     // NEW: start fresh buffer for this hold
     if (isMemoryCheckPhase) {
