@@ -159,6 +159,8 @@
           cursor:help;
           display:inline-block;
           margin-right:0.18em; /* preserve natural gaps for easier hovering */
+          padding:0.08em 0.04em; /* tiny padding to catch hover between letters */
+          line-height:1.5;
         }
       /* … (UNCHANGED GLOBAL STYLES FROM ORIGINAL FILE) … */
       #translation-tooltip {
@@ -480,9 +482,9 @@ function normalise(str){
     .trim();
 }
 
-function makeTextNodesTranslatable(rootEl){
+function makeTextNodesTranslatable(rootEl, force=false){
     if(!rootEl) return;
-    if(rootEl.dataset.wrapped) return;  // already processed
+    if(rootEl.dataset.wrapped && !force) return;  // already processed
     rootEl.dataset.wrapped = '1';
 
     const walker = document.createTreeWalker(
@@ -1367,17 +1369,19 @@ function displayScene(sceneId) {
     );
     // ---------------------------------------------------------------------------
 
-    formattedEnglishSceneText = formatText(sceneDisplayText);
+    formattedEnglishSceneText = wrappedEnglishText;
     originalEnglishTextForMemoryCheck = wrappedEnglishText;
 
     if (ukrainianText){
         formattedUkrainianTextForMemoryCheck = formatText(ukrainianText);
     }
 
-    const plainEnglishText = stripHtml(formattedEnglishSceneText);
+    const plainEnglishText = stripHtml(sceneDisplayText);
 
     // Initial UI Update
     sceneTextEl.innerHTML = formattedEnglishSceneText;
+    // Force-wrap any remaining bare text nodes so hovering works everywhere
+    makeTextNodesTranslatable(sceneTextEl, true);
     outcomeDisplayEl.innerHTML = outcomeMessage;
     voiceStatusEl.textContent = '';
     voiceStatusEl.className = 'text-info';
