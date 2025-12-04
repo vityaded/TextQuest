@@ -445,7 +445,7 @@ let isMemoryCheckPhase = false; // Is the player currently supposed to recall th
 let isChoiceSpeakingPhase = false; // Is the player supposed to speak their choice?
 let originalEnglishTextForMemoryCheck = ""; // Stores formatted EN text for recall comparison/display
 let formattedEnglishSceneText = ""; // Stores the English text shown to the user (choice phase)
-let formattedUkrainianTextForMemoryCheck = "";// Stores formatted UA text to show during recall
+let formattedUkrainianTextForMemoryCheck = ""; // Stores formatted UA text to show during recall
 let memoryCheckPassed = false; // Did the player succeed in the last memory check?
 let ttsUnlocked = false; // Has the user interaction unlocked text-to-speech?
 let micPermissionGranted = null; // null: unknown, true: granted, false: denied
@@ -456,7 +456,7 @@ let userStoppedRecognition = false; // Track intentional stops to prevent auto-r
 
 const MEMORY_SIMILARITY_THRESHOLD = 0.50; // Required similarity (0-1) for memory check
 
-// NEW: buffers for one button hold
+// NEW: buffers for all text said during ONE button hold
 let memoryTranscriptBuffer = "";
 let choiceTranscriptBuffer = "";
 
@@ -909,7 +909,7 @@ function initializeSpeechRecognition() {
         recognition.onresult = (event) => {
             console.log('[SpeechRec] Event: onresult');
 
-            // Collect only new, final results
+            // Collect only final pieces (in case there are multiple results)
             const collected = [];
             for (let i = event.resultIndex; i < event.results.length; i++) {
                 const res = event.results[i];
@@ -926,7 +926,7 @@ function initializeSpeechRecognition() {
 
             console.log(`[SpeechRec] Recognized chunk: "${transcript}"`);
 
-            // Accumulate into buffers – we will evaluate on button release (onend after stop)
+            // Only accumulate. Evaluation will happen in onend after user releases.
             if (isMemoryCheckPhase) {
                 memoryTranscriptBuffer += (memoryTranscriptBuffer ? " " : "") + transcript;
             } else if (isChoiceSpeakingPhase) {
@@ -973,7 +973,8 @@ function initializeSpeechRecognition() {
             updateVoiceButtonUI(); // Reset button state
 
             // If recognition ended *not* because we explicitly stopped,
-            // and the button is still held in a valid phase, restart seamlessly.
+            // and the button is still held, and we are in a valid phase,
+            // restart recognition to keep listening while held (handle pauses).
             if (
                 isHoldActive &&
                 micPermissionGranted !== false &&
@@ -987,21 +988,22 @@ function initializeSpeechRecognition() {
                 } catch (e) {
                     console.warn("[SpeechRec] Error restarting recognition in onend:", e);
                 }
-                return; // Still in the same "hold" – keep buffering.
+                return; // Still in the same “hold”, continue buffering.
             }
 
-            // If onend happened because the user released the button,
-            // process the accumulated transcript ONCE.
+            // If we are here and userStoppedRecognition is true,
+            // this onend corresponds to “button was released”.
             if (userStoppedRecognition) {
                 console.log('[SpeechRec] onend after user stop – processing buffered transcript.');
 
                 if (isMemoryCheckPhase) {
+                    // One merged transcript for the entire hold
                     processMemoryCheckResult(memoryTranscriptBuffer);
                 } else if (isChoiceSpeakingPhase) {
                     processChoiceSpeechResult(choiceTranscriptBuffer);
                 }
 
-                // Clear buffers for the next interaction
+                // Clear buffers for future holds
                 memoryTranscriptBuffer = "";
                 choiceTranscriptBuffer = "";
                 userStoppedRecognition = false;
@@ -1370,7 +1372,7 @@ function displayScene(sceneId) {
     originalEnglishTextForMemoryCheck = "";
     formattedUkrainianTextForMemoryCheck = "";
 
-    // NEW: clear recognition buffers
+    // NEW: clear recognition buffers on each new scene
     memoryTranscriptBuffer = "";
     choiceTranscriptBuffer = "";
 
@@ -1664,7 +1666,7 @@ function handleVoiceButtonClick(action) {
     isHoldActive = true;
     userStoppedRecognition = false;
 
-    // NEW: clear buffers for this new “hold”
+    // NEW: start fresh buffer for this hold
     if (isMemoryCheckPhase) {
         memoryTranscriptBuffer = "";
     } else if (isChoiceSpeakingPhase) {
