@@ -419,6 +419,24 @@ const voiceButton = document.getElementById('voice-button');
 const voiceStatusEl = document.getElementById('voice-status');
 const startChallengeBtn = document.getElementById('start-challenge-btn'); // Renamed
 const vocabListContainer = document.getElementById('vocab-list-container');
+const gameContainer = document.getElementById('game-container');
+let frozenGameHeight = null;
+
+function freezeGameHeight() {
+    if (!gameContainer) return;
+    if (frozenGameHeight === null) {
+        frozenGameHeight = gameContainer.offsetHeight;
+        gameContainer.style.height = frozenGameHeight + 'px';
+    }
+}
+
+function unfreezeGameHeight() {
+    if (!gameContainer) return;
+    if (frozenGameHeight !== null) {
+        gameContainer.style.height = '';
+        frozenGameHeight = null;
+    }
+}
 
 // --- Game State ---
 let currentSceneId = 'start';
@@ -640,48 +658,12 @@ function calculateSimilarity(text1, text2) {
 
 /** Displays English text after memory check, highlighting matched words */
 function displayAndHighlightMemoryCheck(originalHTML, spokenTranscript) {
-     const plainOriginal = stripHtml(originalHTML).toLowerCase();
-     const originalWords = plainOriginal.split(/\s+/).filter(w => w.length > 0);
-     const spokenWords = spokenTranscript ? spokenTranscript.toLowerCase().split(/\s+/).filter(w => w.length > 0) : [];
-     const spokenWordSet = new Set(spokenWords);
-     let highlightedHTML = originalHTML; // Start with the formatted HTML
-     const matchedOriginalWords = new Set();
+    // Show the English version again after memory check
+    sceneTextEl.innerHTML = originalHTML;
+    sceneTextEl.classList.remove('memory-recall-active');
 
-     originalWords.forEach(word => {
-         const cleanWord = word.replace(/[.,!?;:]/g, '');
-         if (cleanWord && spokenWordSet.has(cleanWord)) {
-             matchedOriginalWords.add(cleanWord);
-         }
-     });
-      console.log("[Highlight] Matched words found:", Array.from(matchedOriginalWords));
-
-     // Apply memory-match class to matched words in the original *formatted* HTML
-     matchedOriginalWords.forEach(word => {
-         if (!word) return;
-         try {
-             const escapedWord = word.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-             // More specific regex to avoid matching inside tags or already wrapped spans
-             const regex = new RegExp(`(?<=>[^<]*)(\\b${escapedWord}\\b)(?=[^<]*<)|(?<!=["'\\/])(\\b${escapedWord}\\b)(?!["'\\/])`, 'gi');
-
-             highlightedHTML = highlightedHTML.replace(regex, (match, group1, group2) => {
-                 const actualMatch = group1 || group2; // Get the matched word
-                 // Check if the match is already inside a span (basic check)
-                 // This is tricky - aiming to not double-wrap
-                  const surroundingChars = highlightedHTML.substring(
-                      Math.max(0, highlightedHTML.indexOf(actualMatch) - 10),
-                      highlightedHTML.indexOf(actualMatch) + actualMatch.length + 10
-                 );
-                 if (surroundingChars.includes('<span class="memory-match">') || surroundingChars.includes('<span class="keyword-highlight">')) {
-                     return actualMatch; // Avoid re-wrapping if it looks like it's already wrapped
-                 }
-                 return `<span class="memory-match">${actualMatch}</span>`;
-             });
-         } catch (e) { console.error(`[Highlight] Regex error for word "${word}":`, e); }
-     });
-
-     sceneTextEl.innerHTML = highlightedHTML; // Display the result with highlights
-   
-     sceneTextEl.classList.remove('memory-recall-active');
+    // Ensure tooltip system still works on this content
+    makeTextNodesTranslatable(sceneTextEl, true);
 }
 
 
@@ -694,12 +676,10 @@ function updateVoiceButtonUI() {
 
     if (isListening) {
         voiceButton.classList.add('listening', 'bg-info');
-        if (isMemoryCheckPhase) {
-            voiceButton.textContent = 'Release to stop 🎤';
-        } else if (isChoiceSpeakingPhase) {
+        if (isMemoryCheckPhase || isChoiceSpeakingPhase) {
             voiceButton.textContent = 'Release to stop 🎤';
         } else {
-             voiceButton.textContent = 'Listening... 👂'; // Generic fallback
+            voiceButton.textContent = 'Listening... 👂';
         }
     } else {
          // Default button state
@@ -1603,10 +1583,27 @@ function handleVoiceButtonClick(action) {
     if (action === 'stop') {
         // user released the button → stop recognition and prevent auto-restart
         isHoldActive = false;
+        userStoppedRecognition = true;
+
+        // Immediately show English again in memory phase
+        if (isMemoryCheckPhase && formattedEnglishSceneText) {
+            sceneTextEl.innerHTML = formattedEnglishSceneText;
+            sceneTextEl.classList.remove('memory-recall-active');
+            setVocabListVisibility(true);
+            makeTextNodesTranslatable(sceneTextEl, true);
+        }
+
+        // Also restore choices visibility in choice phase (visual only)
+        if (isChoiceSpeakingPhase) {
+            setChoicesVisibility(true);
+        }
+
+        // Unfreeze layout so page can resize normally again
+        unfreezeGameHeight();
+
         if (isListening) {
             console.log("[Voice Button] Stopping recognition (button released).");
             try {
-                userStoppedRecognition = true;  // mark this as intentional stop
                 recognition.stop();
             } catch (e) {
                 console.warn("[Voice Button] Error stopping recognition:", e);
@@ -1618,22 +1615,28 @@ function handleVoiceButtonClick(action) {
     // --- action === 'start': start listening while button is held ---
     isHoldActive = true;
 
-    if (isListening) {
-        // already listening (maybe auto-restart), ignore extra press
-        return;
-    }
-
     if (!isMemoryCheckPhase && !isChoiceSpeakingPhase) {
         console.warn("[Voice Button] Pressed outside memory/choice phase.");
         return;
     }
 
+    // Freeze container height so the button does not jump
+    freezeGameHeight();
+
+    if (isListening) {
+        // already listening (e.g. after auto-restart) – nothing to do
+        return;
+    }
+
     if (isMemoryCheckPhase) {
         console.log("[Voice Button] Starting memory recall recognition (hold).");
+
+        // Show Ukrainian while button is pressed
         if (formattedUkrainianTextForMemoryCheck) {
             sceneTextEl.innerHTML = formattedUkrainianTextForMemoryCheck;
         } else {
-            sceneTextEl.innerHTML = "<p class='text-highlight p-2 text-center'>Translation not available.<br/>Recall the English text.</p>";
+            sceneTextEl.innerHTML =
+                "<p class='text-highlight p-2 text-center'>Translation not available.<br/>Recall the English text.</p>";
         }
         sceneTextEl.classList.add('memory-recall-active');
         setVocabListVisibility(false);
@@ -1646,9 +1649,11 @@ function handleVoiceButtonClick(action) {
             voiceStatusEl.className = 'text-info';
         } catch (e) {
             console.error("[Voice Button] Error starting memory recognition:", e);
+            // Restore English + layout if start fails
             sceneTextEl.innerHTML = formattedEnglishSceneText;
             sceneTextEl.classList.remove('memory-recall-active');
             setVocabListVisibility(true);
+            unfreezeGameHeight();
             voiceStatusEl.textContent = "Error starting voice input.";
             voiceStatusEl.className = 'text-danger';
             isListening = false;
@@ -1656,7 +1661,9 @@ function handleVoiceButtonClick(action) {
         }
     } else if (isChoiceSpeakingPhase) {
         console.log("[Voice Button] Starting choice speaking recognition (hold).");
-        setChoicesVisibility(false); // hide choices while speaking
+
+        // Hide choices while speaking
+        setChoicesVisibility(false);
 
         try {
             recognition.lang = 'en-US';
@@ -1665,6 +1672,7 @@ function handleVoiceButtonClick(action) {
             voiceStatusEl.className = 'text-info';
         } catch (e) {
             console.error("[Voice Button] Error starting choice recognition:", e);
+            unfreezeGameHeight();
             voiceStatusEl.textContent = "Error starting voice input.";
             voiceStatusEl.className = 'text-danger';
             isListening = false;
