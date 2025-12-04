@@ -155,7 +155,11 @@
            border: none; /* Collapse border */
         }
         /* === inline‑translation tooltip ========================================= */
-        .translatable-word{cursor:help;}
+        .translatable-sentence{
+          cursor:help;
+          display:inline-block;
+          margin-right:0.18em; /* preserve natural gaps for easier hovering */
+        }
       /* … (UNCHANGED GLOBAL STYLES FROM ORIGINAL FILE) … */
       #translation-tooltip {
       position: fixed;
@@ -464,11 +468,22 @@ let recognition = null; // Holds the SpeechRecognition instance
  * If a UA version is missing it will be filled on‑demand via Google‑Translate.
  */
 
- /* =========================================================================
+/* =========================================================================
    ❶  Make ALL English text nodes translatable
    ------------------------------------------------------------------------ */
- function makeTextNodesTranslatable(rootEl){
+function normalise(str){
+  return (str||'')
+    .toLowerCase()
+    .replace(/[’'`]/g,'')          // drop apostrophes
+    .replace(/[\p{P}$+<=>^~]/gu,'')// drop punctuation
+    .replace(/\s+/g,' ')           // collapse spaces
+    .trim();
+}
+
+function makeTextNodesTranslatable(rootEl){
     if(!rootEl) return;
+    if(rootEl.dataset.wrapped) return;  // already processed
+    rootEl.dataset.wrapped = '1';
 
     const walker = document.createTreeWalker(
         rootEl,
@@ -481,7 +496,7 @@ let recognition = null; // Holds the SpeechRecognition instance
                 if(!/[A-Za-z]/.test(node.nodeValue)) return NodeFilter.FILTER_REJECT;
                 // already wrapped?
                 if(node.parentNode && node.parentNode.classList &&
-                   node.parentNode.classList.contains('translatable-word')){
+                   node.parentNode.classList.contains('translatable-sentence')){
                     return NodeFilter.FILTER_REJECT;
                 }
                 return NodeFilter.FILTER_ACCEPT;
@@ -494,26 +509,11 @@ let recognition = null; // Holds the SpeechRecognition instance
     while(walker.nextNode()) toWrap.push(walker.currentNode);
 
     toWrap.forEach(node=>{
-        const fragment = document.createDocumentFragment();
-        const parts = node.nodeValue.split(/(\b[A-Za-z][A-Za-z'-]*\b)/);
-
-        parts.forEach(part => {
-            if(/\b[A-Za-z][A-Za-z'-]*\b/.test(part)){
-                const span = document.createElement('span');
-                span.className = 'translatable-word';
-                span.dataset.en = part;
-                const vocabTranslation = vocabTranslations[part.toLowerCase()];
-                if (vocabTranslation) {
-                    span.dataset.ua = vocabTranslation;
-                }
-                span.textContent = part;
-                fragment.appendChild(span);
-            } else if(part){
-                fragment.appendChild(document.createTextNode(part));
-            }
-        });
-
-        node.parentNode.replaceChild(fragment,node);
+        const span = document.createElement('span');
+        span.className = 'translatable-sentence';
+        span.dataset.en = node.nodeValue.trim();
+        span.textContent = node.nodeValue;
+        node.parentNode.replaceChild(span,node);
     });
 }
 
@@ -521,33 +521,18 @@ let recognition = null; // Holds the SpeechRecognition instance
    WRAP COMPLETE ENGLISH SENTENCES  (works even with <span> keywords inside)
    ------------------------------------------------------------------------ */
    function wrapSentencesWithTranslation(rawEn, uaText){
-    // ①  split the *plain* English into sentences
-    const plainSentences = rawEn
-        .match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [];
+    const enSentences = rawEn.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [rawEn];
+    const uaSentences = uaText.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [];
 
-    // ②  insert unique tokens – later we can find them after keyword‑highlighting
-    let tokenised = rawEn;
-    const tokens = [];                 // [{tok:'%%TX0%%', en:'...', ua:'...'}]
-    plainSentences.forEach((s,i)=>{
-        const tok = `%%TX${i}%%`;
-        tokens.push({tok, en:s.trim(), ua:(uaText.match(/[^.!?]+[.!?]+|[^.!?]+$/g)||[])[i]||''});
-        tokenised = tokenised.replace(s, tok);   // first occurrence only
-    });
-
-    // ③  run your existing highlight code *after* tokenisation
-    tokenised = formatText(tokenised);
-
-    // ④  swap tokens for <span class="translatable-sentence"> … </span>
-    tokens.forEach(({tok,en,ua})=>{
-        // find the highlighted version of this sentence (may contain keyword spans now)
-        const regexTok = new RegExp(tok.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'));
-        tokenised = tokenised.replace(
-            regexTok,
-            `<span class="translatable-sentence" data-en="${en.replace(/"/g,'&quot;')}" data-ua="${ua.replace(/"/g,'&quot;')}">${formatText(en)}</span>`
-        );
-    });
-
-    return tokenised;
+    return enSentences
+      .map((sentence, idx) => {
+        const enClean = sentence.trim();
+        const uaClean = (uaSentences[idx] || '').trim();
+        const safeEn = enClean.replace(/"/g, '&quot;');
+        const safeUa = uaClean.replace(/"/g, '&quot;');
+        return `<span class="translatable-sentence" data-en="${safeEn}" data-ua="${safeUa}">${formatText(enClean)}</span>`;
+      })
+      .join(' ');
 }
 
 
@@ -1177,147 +1162,151 @@ function findBestMatchChoice(transcript, choices) {
 // ----------  TOOLTIP  ----------------------------------------------------
 // ----------  TOOLTIP  +  TTS‑speaker  ------------------------------------
 // ----------  TOOLTIP  +  TTS‑speaker  ------------------------------------
-(function () {
-      const tip = document.createElement("div");
-      tip.id = "translation-tooltip";
-      document.body.appendChild(tip);
+(function(){
+    const tip  = document.createElement('div');
+    tip.id = 'translation-tooltip';
+    document.body.appendChild(tip);
 
-      const cacheTr = Object.create(null);
-      const cacheAu = Object.create(null);
-      let hideTimer = null;
+    /* ─── internal caches ─────────────────────────────────────────────── */
+    const cacheTr = Object.create(null);   // EN→UA
+    let lastCtrl = null;          // AbortController for pending UA fetch
 
-      async function translateENtoUA(en) {
-        if (cacheTr[en]) return cacheTr[en];
-        const url =
-          "https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=uk&dt=t&q=" +
-          encodeURIComponent(en);
+    const cacheAu = Object.create(null);   // EN→Audio
+    let   hideTimer = null;                // delayed hide handle
+
+    /* ─── helpers (translate / play) ──────────────────────────────────── */
+/* ─── helpers (translate / play) ──────────────────────────────────── */
+// ─── translateENtoUA ─────────────────────────────────────────────────────
+// ─── translateENtoUA (silent on Abort) ───────────────────────────────────
+async function translateENtoUA(en, { signal } = {}) {
+    const CHUNK = 180;
+    const out = [];
+    for (let i = 0; i < en.length; i += CHUNK) {
+        const part = en.slice(i, i + CHUNK);
+        const url  = 'https://translate.googleapis.com/translate_a/single'
+                   + '?client=gtx&sl=en&tl=uk&dt=t&q=' + encodeURIComponent(part);
         try {
-          const data = await fetch(url).then((r) => r.json());
-          const ua = (data?.[0] || []).map((ch) => ch[0]).join(" ") || "—";
-          cacheTr[en] = ua;
-          return ua;
+            const json = await fetch(url, { signal }).then(r=>r.json());
+            out.push(json?.[0]?.[0]?.[0] || '');
         } catch (e) {
-          console.warn("[translate]", e);
-          return "—";
+            if (e.name === 'AbortError') throw e;   // intentional
+            console.warn('[translate] error:', e);
+            out.push('');
         }
-      }
+    }
+    const ua = out.join(' ').trim() || '—';
+    cacheTr[en] = ua;
+    return ua;
+}
 
-      async function playTTS(text, lang = "en") {
-        const key = text.slice(0, 190);
-        if (cacheAu[key]) {
-          cacheAu[key].currentTime = 0;
-          cacheAu[key].play();
-          return;
-        }
-        const url =
-          "https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=" +
-          lang +
-          "&q=" +
-          encodeURIComponent(key);
-        try {
-          const blob = await fetch(url).then((r) => r.blob());
-          const audio = new Audio(URL.createObjectURL(blob));
-          cacheAu[key] = audio;
-          await audio.play();
-        } catch (e) {
-          if ("speechSynthesis" in window) {
-            const u = new SpeechSynthesisUtterance(text);
-            u.lang = lang;
-            speechSynthesis.speak(u);
-          }
-        }
-      }
 
-      function positionAbove(target) {
-        const r = target.getBoundingClientRect();
-        tip.style.display = "block";
-        tip.style.opacity = "0";
-        tip.style.left = "0";
-        tip.style.top = "0";
-        tip.offsetHeight; // force paint to get tooltip size
-        const top = Math.max(4, r.top - tip.offsetHeight - 6);
-        const left = Math.max(
-          4,
-          Math.min(
-            r.left + r.width / 2 - tip.offsetWidth / 2,
-            window.innerWidth - tip.offsetWidth - 4
-          )
-        );
-        tip.style.top = `${top}px`;
-        tip.style.left = `${left}px`;
-        tip.style.opacity = "1";
-      }
 
-      function showTip({ ua, en, target }) {
-        clearTimeout(hideTimer);
-        tip.innerHTML = `<span>${ua}</span> <span id="speak-btn" style="cursor:pointer;margin-left:.5rem;">🔊</span>`;
-        tip.dataset.en = en;
-        positionAbove(target);
-      }
+// ─── playTTS ──────────────────────────────────────────────────────────────
+// ─── playTTS ──────────────────────────────────────────────────────────────
+async function playTTS(text, lang = 'en') {
+    const ENDPOINT =
+      'https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob'
+      + '&tl=' + lang
+      + '&q='  + encodeURIComponent(text.slice(0, 190));
 
-      function scheduleHide(ms = 200) {
-        clearTimeout(hideTimer);
-        hideTimer = setTimeout(() => (tip.style.display = "none"), ms);
-      }
+    try {
+        const resp = await fetch(ENDPOINT, { mode: 'cors' });
+        if (!resp.ok) throw new Error('TTS HTTP ' + resp.status);
+        const blob = await resp.blob();
+        const url  = URL.createObjectURL(blob);
 
-      /* Tooltip self‑events */
-      tip.addEventListener("mouseenter", () => clearTimeout(hideTimer));
-      tip.addEventListener("mouseleave", () => scheduleHide());
-      tip.addEventListener("click", (e) => {
-        if (e.target.id === "speak-btn") playTTS(tip.dataset.en);
-      });
-      // — Mobile tap on speaker icon —
-      tip.addEventListener(
-        "touchend",
-        (e) => {
-          if (e.target.id === "speak-btn") {
-            e.preventDefault();
-            e.stopPropagation();
-            clearTimeout(hideTimer);
-            playTTS(tip.dataset.en);
-          }
-        },
-        { passive: false }
-      );
-
-      /* Main hover logic  – use mouseenter/mouseleave (non‑bubbling) */
-      document.addEventListener(
-        "mouseenter",
-        async (ev) => {
-          const el = ev.target.closest(".translatable-word");
-          if (!el) return;
-          const en = el.dataset.en;
-          const ua = el.dataset.ua || (el.dataset.ua = await translateENtoUA(en));
-          showTip({ ua, en, target: el });
-        },
-        true // capture phase to catch events before they hit children
-      );
-
-      document.addEventListener(
-        "mouseleave",
-        (ev) => {
-          if (ev.target.closest(".translatable-word")) scheduleHide();
-        },
-        true
-      );
-
-      /* Mobile tap */
-      document.addEventListener(
-        "touchstart",
-        async (e) => {
-          const el = e.target.closest(".translatable-word");
-          if (!el) {
-            tip.style.display = "none";
+        if (cacheAu[text]) {
+            cacheAu[text].currentTime = 0;
+            await cacheAu[text].play();
             return;
-          }
-          const en = el.dataset.en;
-          const ua = el.dataset.ua || (el.dataset.ua = await translateENtoUA(en));
-          showTip({ ua, en, target: el });
-          scheduleHide(2500);
-        },
-        { passive: true }
-      );
-    })();
+        }
+
+        const audio = new Audio(url);
+        cacheAu[text] = audio;
+        await audio.play();
+    } catch (err) {
+        console.warn('[TTS] network-play failed → fallback to Web-Speech', err);
+        if ('speechSynthesis' in window) {
+            const utter = new SpeechSynthesisUtterance(text);
+            utter.lang = lang;
+
+            // start fallback timer
+            const fallback = setTimeout(() => {
+                console.warn('[TTS] fallback timeout: forcing end');
+                utter.onend && utter.onend();
+            }, 50_000);
+
+            // clear timer on end
+            utter.addEventListener('end', () => clearTimeout(fallback));
+            // log non‑canceled errors
+            utter.addEventListener('error', e => {
+                clearTimeout(fallback);
+                if (e.error !== 'canceled') console.warn('[TTS] utterance error:', e.error);
+            });
+
+            window.speechSynthesis.speak(utter);
+        }
+    }
+}
+
+
+
+
+    /* ─── tooltip helpers ─────────────────────────────────────────────── */
+    const speakIcon = '🔊';
+    function position(x,y){
+        tip.style.left=Math.min(x,window.innerWidth-tip.offsetWidth-8)+'px';
+        tip.style.top =(y+12)+'px';
+    }
+    function showTip({ua,en,x,y}){
+        clearTimeout(hideTimer);
+        tip.innerHTML =
+          `<span>${ua}</span>
+           <span id="speak-btn"
+                 style="cursor:pointer;margin-left:.5rem;"
+                 title="Listen">${speakIcon}</span>`;
+        tip.dataset.en = en;
+        tip.style.display='block';
+        position(x,y);
+    }
+    function scheduleHide(ms=300){
+        clearTimeout(hideTimer);
+        hideTimer = setTimeout(()=>tip.style.display='none', ms);
+    }
+
+    /* ─── event wiring ────────────────────────────────────────────────── */
+    // keep tooltip if mouse is over it
+    tip.addEventListener('mouseover', ()=>clearTimeout(hideTimer));
+    tip.addEventListener('mouseout',  ()=>scheduleHide());
+
+    // click speaker
+    tip.addEventListener('click',e=>{
+        if(e.target.id==='speak-btn') playTTS(tip.dataset.en,'en');
+    });
+
+    // desktop hover on sentence
+document.addEventListener('mouseover', async e=>{
+  const el = e.target.closest('.translatable-sentence');
+  if(!el) return;
+
+  if(lastCtrl) lastCtrl.abort();           // cancel previous fetch
+  lastCtrl = new AbortController();
+
+  const en = el.dataset.en;
+  let ua = el.dataset.ua;
+  if(!ua){
+    try{
+      showTip({ua:'…',en,x:e.clientX,y:e.clientY});     // skeleton
+      ua = await translateENtoUA(en,{signal:lastCtrl.signal});
+    }catch{
+      ua = '⚠ offline / quota';
+    }
+    if(lastCtrl.signal.aborted) return;                 // tooltip gone
+    el.dataset.ua = ua;
+  }
+  showTip({ua,en,x:e.clientX,y:e.clientY});
+});
+})();
 
 
 
