@@ -155,7 +155,7 @@
            border: none; /* Collapse border */
         }
         /* === inline‑translation tooltip ========================================= */
-        .translatable-sentence{cursor:help;}
+        .translatable-word{cursor:help;}
       /* … (UNCHANGED GLOBAL STYLES FROM ORIGINAL FILE) … */
       #translation-tooltip {
       position: fixed;
@@ -481,7 +481,7 @@ let recognition = null; // Holds the SpeechRecognition instance
                 if(!/[A-Za-z]/.test(node.nodeValue)) return NodeFilter.FILTER_REJECT;
                 // already wrapped?
                 if(node.parentNode && node.parentNode.classList &&
-                   node.parentNode.classList.contains('translatable-sentence')){
+                   node.parentNode.classList.contains('translatable-word')){
                     return NodeFilter.FILTER_REJECT;
                 }
                 return NodeFilter.FILTER_ACCEPT;
@@ -494,11 +494,26 @@ let recognition = null; // Holds the SpeechRecognition instance
     while(walker.nextNode()) toWrap.push(walker.currentNode);
 
     toWrap.forEach(node=>{
-        const span = document.createElement('span');
-        span.className = 'translatable-sentence';
-        span.dataset.en = node.nodeValue.trim();
-        span.textContent = node.nodeValue;
-        node.parentNode.replaceChild(span,node);
+        const fragment = document.createDocumentFragment();
+        const parts = node.nodeValue.split(/(\b[A-Za-z][A-Za-z'-]*\b)/);
+
+        parts.forEach(part => {
+            if(/\b[A-Za-z][A-Za-z'-]*\b/.test(part)){
+                const span = document.createElement('span');
+                span.className = 'translatable-word';
+                span.dataset.en = part;
+                const vocabTranslation = vocabTranslations[normalise(part)];
+                if (vocabTranslation) {
+                    span.dataset.ua = vocabTranslation;
+                }
+                span.textContent = part;
+                fragment.appendChild(span);
+            } else if(part){
+                fragment.appendChild(document.createTextNode(part));
+            }
+        });
+
+        node.parentNode.replaceChild(fragment,node);
     });
 }
 
@@ -1173,6 +1188,13 @@ function findBestMatchChoice(transcript, choices) {
 
       async function translateENtoUA(en) {
         if (cacheTr[en]) return cacheTr[en];
+
+        const vocabUa = vocabTranslations[normalise(en)];
+        if (vocabUa) {
+          cacheTr[en] = vocabUa;
+          return vocabUa;
+        }
+
         const url =
           "https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=uk&dt=t&q=" +
           encodeURIComponent(en);
@@ -1269,7 +1291,7 @@ function findBestMatchChoice(transcript, choices) {
       document.addEventListener(
         "mouseenter",
         async (ev) => {
-          const el = ev.target.closest(".translatable-sentence");
+          const el = ev.target.closest(".translatable-word");
           if (!el) return;
           const en = el.dataset.en;
           const ua = el.dataset.ua || (el.dataset.ua = await translateENtoUA(en));
@@ -1281,7 +1303,7 @@ function findBestMatchChoice(transcript, choices) {
       document.addEventListener(
         "mouseleave",
         (ev) => {
-          if (ev.target.closest(".translatable-sentence")) scheduleHide();
+          if (ev.target.closest(".translatable-word")) scheduleHide();
         },
         true
       );
@@ -1290,7 +1312,7 @@ function findBestMatchChoice(transcript, choices) {
       document.addEventListener(
         "touchstart",
         async (e) => {
-          const el = e.target.closest(".translatable-sentence");
+          const el = e.target.closest(".translatable-word");
           if (!el) {
             tip.style.display = "none";
             return;
