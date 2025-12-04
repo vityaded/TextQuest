@@ -432,6 +432,7 @@ let memoryCheckPassed = false; // Did the player succeed in the last memory chec
 let ttsUnlocked = false; // Has the user interaction unlocked text-to-speech?
 let micPermissionGranted = null; // null: unknown, true: granted, false: denied
 let isListening = false; // Is the speech recognition actively listening?
+let shouldStopAfterStart = false; // Track early button release before recognition begins
 
 const MEMORY_SIMILARITY_THRESHOLD = 0.50; // Required similarity (0-1) for memory check
 
@@ -912,6 +913,11 @@ function initializeSpeechRecognition() {
 
         recognition.onstart = () => {
             isListening = true;
+            if (shouldStopAfterStart) {
+                console.log('[SpeechRec] Stop requested before start; stopping immediately.');
+                shouldStopAfterStart = false;
+                try { recognition.stop(); } catch (e) { console.warn('[SpeechRec] Error stopping after delayed start:', e); }
+            }
             updateVoiceButtonUI();
             console.log('[SpeechRec] Event: onstart');
         };
@@ -950,6 +956,7 @@ function initializeSpeechRecognition() {
         recognition.onend = () => {
             console.log('[SpeechRec] Event: onend');
             isListening = false;
+            shouldStopAfterStart = false;
             updateVoiceButtonUI(); // Reset button state after listening stops
             if (lastTranscript) {
                 if (currentListeningPhase === 'memory') {
@@ -1331,6 +1338,7 @@ function displayScene(sceneId) {
     if (recognition && isListening) {
         try { recognition.abort(); } catch (e) {}
         isListening = false;
+        shouldStopAfterStart = false;
     }
     sceneTextEl.classList.remove('speaking', 'memory-recall-active');
 
@@ -1533,6 +1541,7 @@ function handleChoice(choiceData) {
      if (recognition && isListening) {
          try { recognition.abort(); } catch(e) {}
          isListening = false;
+        shouldStopAfterStart = false;
      }
      sceneTextEl.classList.remove('speaking', 'memory-recall-active');
 
@@ -1585,6 +1594,7 @@ function startVoiceButtonHold() {
     }
 
     lastTranscript = ""; // Reset previous transcript
+    shouldStopAfterStart = false; // Reset stop latch for new hold
 
     if (isMemoryCheckPhase) {
         console.log("[Voice Button] Starting memory recall recognition.");
@@ -1637,11 +1647,21 @@ function startVoiceButtonHold() {
 /** Stops recognition when the voice button is released */
 function stopVoiceButtonHold() {
     console.log('[Voice Button] Hold end.');
-    if (recognition && isListening) {
+    if (!recognition) return;
+
+    if (isListening) {
         try {
             recognition.stop();
         } catch (e) {
             console.warn("[Voice Button] Error stopping recognition:", e);
+        }
+    } else {
+        // If release happens before the API fires onstart, mark for immediate stop
+        shouldStopAfterStart = true;
+        try {
+            recognition.stop();
+        } catch (e) {
+            console.warn('[Voice Button] Error stopping recognition before start:', e);
         }
     } else {
         currentListeningPhase = null;
