@@ -155,7 +155,11 @@
            border: none; /* Collapse border */
         }
         /* === inline‑translation tooltip ========================================= */
-        .translatable-sentence{cursor:help;}
+        .translatable-sentence{
+          cursor:help;
+          display:inline-block;
+          margin-right:0.18em; /* preserve natural gaps for easier hovering */
+        }
       /* … (UNCHANGED GLOBAL STYLES FROM ORIGINAL FILE) … */
       #translation-tooltip {
       position: fixed;
@@ -517,33 +521,18 @@ function makeTextNodesTranslatable(rootEl){
    WRAP COMPLETE ENGLISH SENTENCES  (works even with <span> keywords inside)
    ------------------------------------------------------------------------ */
    function wrapSentencesWithTranslation(rawEn, uaText){
-    // ①  split the *plain* English into sentences
-    const plainSentences = rawEn
-        .match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [];
+    const enSentences = rawEn.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [rawEn];
+    const uaSentences = uaText.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [];
 
-    // ②  insert unique tokens – later we can find them after keyword‑highlighting
-    let tokenised = rawEn;
-    const tokens = [];                 // [{tok:'%%TX0%%', en:'...', ua:'...'}]
-    plainSentences.forEach((s,i)=>{
-        const tok = `%%TX${i}%%`;
-        tokens.push({tok, en:s.trim(), ua:(uaText.match(/[^.!?]+[.!?]+|[^.!?]+$/g)||[])[i]||''});
-        tokenised = tokenised.replace(s, tok);   // first occurrence only
-    });
-
-    // ③  run your existing highlight code *after* tokenisation
-    tokenised = formatText(tokenised);
-
-    // ④  swap tokens for <span class="translatable-sentence"> … </span>
-    tokens.forEach(({tok,en,ua})=>{
-        // find the highlighted version of this sentence (may contain keyword spans now)
-        const regexTok = new RegExp(tok.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'));
-        tokenised = tokenised.replace(
-            regexTok,
-            `<span class="translatable-sentence" data-en="${en.replace(/"/g,'&quot;')}" data-ua="${ua.replace(/"/g,'&quot;')}">${formatText(en)}</span>`
-        );
-    });
-
-    return tokenised;
+    return enSentences
+      .map((sentence, idx) => {
+        const enClean = sentence.trim();
+        const uaClean = (uaSentences[idx] || '').trim();
+        const safeEn = enClean.replace(/"/g, '&quot;');
+        const safeUa = uaClean.replace(/"/g, '&quot;');
+        return `<span class="translatable-sentence" data-en="${safeEn}" data-ua="${safeUa}">${formatText(enClean)}</span>`;
+      })
+      .join(' ');
 }
 
 
