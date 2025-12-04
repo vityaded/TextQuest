@@ -1,0 +1,498 @@
+const gameData = {
+  'start': {
+    text: {
+      en: "It is a quiet morning. Gromit hears his alarm clock next to the bed. He is awake, straightens the carpet, and makes tea. Wallace comes in with a big smile. He holds a wrapped box and almost bumps the doorbell button.",
+      ua: "Тихий ранок. Ґроміт чує свій будильник біля ліжка. Він прокинувся, випрямляє килим і готує чай. Воллес заходить з великою усмішкою. Він тримає загорнуту коробку й майже зачіпає кнопку дзвінка."
+    },
+    choices: [
+      { text: "Open the present now.", nextScene: 'scene_1' },
+      { text: "Make breakfast first.", nextScene: 'scene_2' }
+    ]
+  },
+
+  'scene_1': {
+    text: {
+      en: "Gromit opens the box. Inside are tall mechanical trousers with bright buttons and strong straps. Wallace says, \"They can walk by themselves!\" Gromit looks at them carefully, as if reading a note from a burglar alarm manual.",
+      ua: "Ґроміт відкриває коробку. Усередині високі механічні штани з яскравими кнопками й міцними ременями. Воллес каже: \"Вони можуть ходити самі!\" Ґроміт уважно дивиться на них, ніби читає запис з інструкції сигналізації."
+    },
+    choices: [
+      { text: "Try the trousers on.", nextScene: 'scene_3' },
+      { text: "Read the manual first.", nextScene: 'scene_4' }
+    ]
+  },
+
+  'scene_2': {
+    text: {
+      en: "Gromit cooks toast and cheese in a clean pan. He wants a calm breakfast. Wallace talks about the rent bill and the broken burglar alarm. \"We need money,\" he says, pointing to a note on the table.",
+      ua: "Ґроміт готує тости з сиром у чистій пательні. Він хоче спокійний сніданок. Воллес говорить про рахунок за оренду й зламану сигналізацію. \"Нам потрібні гроші,\" каже він, показуючи на запис на столі."
+    },
+    choices: [
+      { text: "Invite a lodger to help pay.", nextScene: 'scene_5' },
+      { text: "Look for a job in the paper.", nextScene: 'scene_6' }
+    ]
+  },
+
+  'scene_3': {
+    text: {
+      en: "Gromit steps into the trousers. They lift him up like a ladder on rails. He walks on the wall and the ceiling, touching the banister near the stairs. Wallace laughs loudly.",
+      ua: "Ґроміт влізає у штани. Вони піднімають його, немов драбина на рейках. Він ходить по стіні й стелі, торкаючись поручня біля сходів. Воллес голосно сміється."
+    },
+    choices: [
+      { text: "Walk outside to test them.", nextScene: 'scene_7' },
+      { text: "Take them off and rest.", nextScene: 'scene_4' }
+    ]
+  },
+
+  'scene_4': {
+    text: {
+      en: "Gromit reads the manual. It shows a small remote control and a warning: \"Check the alarm wire and lock.\" The trousers can climb like a spider. Gromit feels a little worried.",
+      ua: "Ґроміт читає інструкцію. Там показаний маленький пульт і попередження: \"Перевірте дріт сигналізації й замок.\" Штани можуть лазити, як павук. Ґроміт трохи хвилюється."
+    },
+    choices: [
+      { text: "Hide the remote.", nextScene: 'scene_8' },
+      { text: "Give the remote to Wallace.", nextScene: 'scene_9' }
+    ]
+  },
+
+  'scene_5': {
+    text: {
+      en: "There is a knock at the door. A small penguin with a suitcase enters. He is very quiet. Wallace smiles and offers him Gromit's room upstairs. The penguin glances at the banister and the steps, checking every angle like an engineer.",
+      ua: "У двері стукають. Маленький пінгвін із валізою заходить. Він дуже тихий. Воллес усміхається й пропонує йому кімнату Ґроміта нагорі. Пінгвін дивиться на поручень і сходи, перевіряючи кожен куток, як інженер."
+    },
+    choices: [
+      { text: "Show the penguin the room.", nextScene: 'scene_10' },
+      { text: "Keep your room and stay upstairs.", nextScene: 'scene_11' }
+    ]
+  },
+
+  'scene_6': {
+    text: {
+      en: "Gromit reads the newspaper on the couch. He sees a job for dog walking and another job at the museum. The museum job needs night work and says, \"Check the air vent and burglar alarm.\"",
+      ua: "Ґроміт читає газету на дивані. Він бачить роботу для вигулювання собак і ще одну роботу в музеї. Музейна робота вночі й каже: \"Перевіряйте повітряний отвір і охоронну сигналізацію.\""
+    },
+    choices: [
+      { text: "Call about the dog-walking job.", nextScene: 'scene_12' },
+      { text: "Visit the museum for the night job.", nextScene: 'scene_13' }
+    ]
+  },
+
+  'scene_7': {
+    text: {
+      en: "Outside, the trousers walk fast. Gromit crosses a puddle and a high wall. A neighbor waves with surprise.",
+      ua: "На вулиці штани йдуть швидко. Ґроміт переходить калюжу й високу стіну. Сусід махає з подивом."
+    },
+    choices: [
+      { text: "Wave back and return home.", nextScene: 'scene_14' },
+      { text: "Run to the park for more fun.", nextScene: 'scene_15' }
+    ]
+  },
+
+  'scene_8': {
+    text: {
+      en: "Gromit hides the remote in a drawer under a pile of socks. He feels safer. The penguin watches from the hallway silently, standing near the coat rack and a tall ladder.",
+      ua: "Ґроміт ховає пульт у шухляді під купою шкарпеток. Він почувається безпечніше. Пінгвін мовчки спостерігає з коридору, стоячи біля вішалки й високої драбини."
+    },
+    choices: [
+      { text: "Ask the penguin if he needs help.", nextScene: 'scene_16' },
+      { text: "Close the drawer and go for tea.", nextScene: 'scene_17' }
+    ]
+  },
+
+  'scene_9': {
+    text: {
+      en: "Gromit gives Wallace the remote. Wallace presses a button and the trousers march in circles, nearly knocking over the floor lamp. The penguin looks annoyed and hides a small piece of wire.",
+      ua: "Ґроміт віддає Воллесу пульт. Воллес натискає кнопку, і штани ходять по колу, майже збиваючи торшер. Пінгвін виглядає роздратованим і ховає маленький шматок дроту."
+    },
+    choices: [
+      { text: "Let Wallace practice with the trousers.", nextScene: 'scene_18' },
+      { text: "Take the remote back for safety.", nextScene: 'scene_8' }
+    ]
+  },
+
+  'scene_10': {
+    text: {
+      en: "Gromit carries the penguin's suitcase upstairs. The penguin puts a small notebook on the table and checks the banister. Gromit sees a drawing of the city with numbers for every bridge.",
+      ua: "Ґроміт несе валізу пінгвіна нагору. Пінгвін кладе маленький зошит на стіл і перевіряє поручень. Ґроміт бачить малюнок міста з числами біля кожного мосту."
+    },
+    choices: [
+      { text: "Peek inside the notebook.", nextScene: 'scene_19' },
+      { text: "Ignore it and prepare fresh sheets.", nextScene: 'scene_11' }
+    ]
+  },
+
+  'scene_11': {
+    text: {
+      en: "Gromit keeps his room. The penguin sleeps downstairs. At night Gromit hears quiet steps, a soft click from the kitchen, and the crash of a rolling bucket.",
+      ua: "Ґроміт залишає свою кімнату. Пінгвін спить унизу. Уночі Ґроміт чує тихі кроки, легке клацання з кухні й гуркіт відра, що котиться."
+    },
+    choices: [
+      { text: "Go check the kitchen.", nextScene: 'scene_20' },
+      { text: "Stay in bed and listen.", nextScene: 'scene_21' }
+    ]
+  },
+
+  'scene_12': {
+    text: {
+      en: "The dog-walking boss likes Gromit's calm voice on the phone. He offers a short job in the afternoon and reminds him to wear boots if it rains. Wallace smiles with relief.",
+      ua: "Начальнику вигулу собак подобається спокійний голос Ґроміта по телефону. Він пропонує коротку роботу вдень і нагадує взяти чоботи, якщо буде дощ. Воллес усміхається з полегшенням."
+    },
+    choices: [
+      { text: "Take the job and meet the dogs.", nextScene: 'scene_22' },
+      { text: "Say no and keep helping Wallace.", nextScene: 'scene_14' }
+    ]
+  },
+
+  'scene_13': {
+    text: {
+      en: "At the museum, Gromit sees a big diamond behind glass and a shiny burglar alarm with a loud bell. The guard says the roof window has a new lock and extra rails around it. Gromit feels curious.",
+      ua: "У музеї Ґроміт бачить великий діамант за склом і блискучу сигналізацію з гучним дзвоном. Охоронець каже, що дахове вікно має новий замок і додаткові поручні навколо. Ґроміт відчуває цікавість."
+    },
+    choices: [
+      { text: "Ask about night shifts.", nextScene: 'scene_23' },
+      { text: "Return home before dark.", nextScene: 'scene_14' }
+    ]
+  },
+
+  'scene_14': {
+    text: {
+      en: "Gromit sits in the living room. The penguin walks around with a tape measure, measuring walls, doors, and even the ceiling for wallpaper. Wallace thinks he is just tidy and wants to paint.",
+      ua: "Ґроміт сидить у вітальні. Пінгвін ходить із рулеткою, вимірює стіни, двері й навіть стелю для шпалер. Воллес думає, що він просто охайний і хоче пофарбувати."
+    },
+    choices: [
+      { text: "Follow the penguin quietly.", nextScene: 'scene_24' },
+      { text: "Play music to relax.", nextScene: 'scene_17' }
+    ]
+  },
+
+  'scene_15': {
+    text: {
+      en: "In the park the trousers jump over benches like a careful bridge. Children clap. A small bird sits on Gromit's shoulder. He feels happy for a moment and forgets the museum alarm.",
+      ua: "У парку штани стрибають через лавки, мов обережний місток. Діти плескають. Маленький птах сідає на плече Ґроміта. Він на мить почувається щасливим і забуває про музейну сигналізацію."
+    },
+    choices: [
+      { text: "Return before it rains.", nextScene: 'scene_14' },
+      { text: "Stay longer and get tired.", nextScene: 'scene_25' }
+    ]
+  },
+
+  'scene_16': {
+    text: {
+      en: "Gromit asks the penguin if he needs help. The penguin shakes his head, closes his notebook, and points to the clock. He seems to wait for night and for the rain to stop.",
+      ua: "Ґроміт питає пінгвіна, чи потрібна йому допомога. Пінгвін хитає головою, закриває свій зошит і показує на годинник. Здається, він чекає ночі й коли припиниться дощ."
+    },
+    choices: [
+      { text: "Watch him closely later.", nextScene: 'scene_21' },
+      { text: "Trust him and go to bed early.", nextScene: 'scene_17' }
+    ]
+  },
+
+  'scene_17': {
+    text: {
+      en: "Gromit makes tea and turns on soft music. He checks the roof hatch through the ceiling window. The house feels calm, but the penguin keeps looking at the ceiling.",
+      ua: "Ґроміт робить чай і вмикає тиху музику. Він перевіряє даховий люк через стельове вікно. Дім здається спокійним, але пінгвін продовжує дивитися на стелю."
+    },
+    choices: [
+      { text: "Check why he looks up.", nextScene: 'scene_24' },
+      { text: "Ignore it and read a book.", nextScene: 'scene_26' }
+    ]
+  },
+
+  'scene_18': {
+    text: {
+      en: "Wallace practices with the trousers. He bumps into a lamp and laughs. The penguin slowly picks up the remote again and pockets a tiny screw and hammer.",
+      ua: "Воллес тренується зі штанами. Він вдаряється об лампу й сміється. Пінгвін повільно знову бере пульт і кладе в кишеню маленький гвинт і молоток."
+    },
+    choices: [
+      { text: "Ask Wallace to stop for now.", nextScene: 'scene_27' },
+      { text: "Let the penguin try the trousers.", nextScene: 'scene_28' }
+    ]
+  },
+
+  'scene_19': {
+    text: {
+      en: "Inside the notebook are maps of the museum. A red circle is around the roof window and another mark shows the air vent. Gromit understands the penguin has a careful plan with numbers and rails.",
+      ua: "У зошиті карти музею. Червоне коло навколо дахового вікна, а ще одна позначка показує повітряний отвір. Ґроміт розуміє, що в пінгвіна є ретельний план із числами й поручнями."
+    },
+    choices: [
+      { text: "Keep the notebook for proof.", nextScene: 'scene_29' },
+      { text: "Put it back quietly.", nextScene: 'scene_11' }
+    ]
+  },
+
+  'scene_20': {
+    text: {
+      en: "In the kitchen Gromit sees the fridge open. The penguin is on the counter with the remote, a screwdriver, and a small drill. He presses buttons and the trousers move in the hallway.",
+      ua: "На кухні Ґроміт бачить відчинений холодильник. Пінгвін на столі з пультом, викруткою й маленьким дрилем. Він натискає кнопки, і штани рухаються в коридорі."
+    },
+    choices: [
+      { text: "Take the remote from him.", nextScene: 'scene_27' },
+      { text: "Pretend to yawn and watch.", nextScene: 'scene_21' }
+    ]
+  },
+
+  'scene_21': {
+    text: {
+      en: "Gromit waits in the dark hallway, past the broom and the bucket. The penguin walks to the door wearing the wrong trousers. Rain starts outside.",
+      ua: "Ґроміт чекає в темному коридорі, повз мітлу й відро. Пінгвін іде до дверей у неправильних штанах. Ззовні починається дощ."
+    },
+    choices: [
+      { text: "Follow him silently.", nextScene: 'scene_30' },
+      { text: "Wake Wallace for help.", nextScene: 'scene_27' }
+    ]
+  },
+
+  'scene_22': {
+    text: {
+      en: "Gromit meets three friendly dogs on a long path. They like him, stay calm even near loud traffic, and give him small coins for the walk. He returns home a bit tired.",
+      ua: "Ґроміт зустрічає трьох дружніх собак на довгій стежці. Вони люблять його, залишаються спокійними навіть біля гучного руху й дають йому дрібні монети за прогулянку. Він повертається додому трохи втомленим."
+    },
+    choices: [
+      { text: "Show Wallace the coins.", nextScene: 'scene_14' },
+      { text: "Save them quietly in a jar.", nextScene: 'scene_26' }
+    ]
+  },
+
+  'scene_23': {
+    text: {
+      en: "The guard offers Gromit a night watch test next week. Gromit notes the time, checks the numbers on the roof steps, and sees a poster about a reward for stopping thieves.",
+      ua: "Охоронець пропонує Ґроміту нічне випробування наступного тижня. Ґроміт записує час, перевіряє числа на дахових сходах і бачить плакат про нагороду за зупинку злодіїв."
+    },
+    choices: [
+      { text: "Take a photo of the poster.", nextScene: 'scene_29' },
+      { text: "Thank the guard and leave.", nextScene: 'scene_14' }
+    ]
+  },
+
+  'scene_24': {
+    text: {
+      en: "Gromit follows the penguin. He sees him measure the window near the roof and the air vent beside it. The penguin writes numbers in his notebook.",
+      ua: "Ґроміт іде за пінгвіном. Він бачить, як той вимірює вікно біля даху й повітряний отвір поруч. Пінгвін записує числа в свій зошит."
+    },
+    choices: [
+      { text: "Hide and keep watching.", nextScene: 'scene_30' },
+      { text: "Tell Wallace about it.", nextScene: 'scene_27' }
+    ]
+  },
+
+  'scene_25': {
+    text: {
+      en: "Gromit stays in the park too long. A storm begins. The trousers slip on wet leaves and he almost falls down a slope into a muddy puddle.",
+      ua: "Ґроміт залишається в парку надто довго. Починається буря. Штани ковзають на мокрому листі, і він майже падає схилом у брудну калюжу."
+    },
+    choices: [
+      { text: "Return home quickly.", nextScene: 'scene_14' },
+      { text: "Rest under a tree and get cold.", nextScene: 'end_fail_cold' }
+    ]
+  },
+
+  'scene_26': {
+    text: {
+      en: "Gromit writes notes about the penguin in his diary. He keeps the coins from the job safe in a jar for the rent and fixes a loose screw in the floor so the ladder stays steady.",
+      ua: "Ґроміт робить нотатки про пінгвіна у своєму щоденнику. Він зберігає монети з роботи в банці для оренди та закручує вільний гвинт у підлозі, щоб драбина стояла стійко."
+    },
+    choices: [
+      { text: "Prepare to stay awake tonight.", nextScene: 'scene_21' },
+      { text: "Go to sleep early.", nextScene: 'end_fail_asleep' }
+    ]
+  },
+
+  'scene_27': {
+    text: {
+      en: "Wallace listens to Gromit. At first he laughs, but then he sees the remote, the map, and a loose piece of rail. He agrees to help watch the penguin and check the lock on the roof hatch.",
+      ua: "Воллес слухає Ґроміта. Спершу він сміється, але потім бачить пульт, карту й вільний шматок рейки. Він погоджується допомогти стежити за пінгвіном і перевірити замок на даховому люку."
+    },
+    choices: [
+      { text: "Set an alarm for midnight.", nextScene: 'scene_30' },
+      { text: "Ask Wallace to call the police now.", nextScene: 'end_success_police' }
+    ]
+  },
+
+  'scene_28': {
+    text: {
+      en: "The penguin wears the trousers and smiles. He walks up the wall easily like a silent spider. Wallace claps. Gromit notices the penguin hiding a drill and a screw in his feathers.",
+      ua: "Пінгвін одягає штани й усміхається. Він легко йде по стіні, мов тихий павук. Воллес плескає. Ґроміт помічає, що пінгвін ховає дриль і гвинт у пір'ї."
+    },
+    choices: [
+      { text: "Warn Wallace softly.", nextScene: 'scene_27' },
+      { text: "Take the drill away.", nextScene: 'scene_29' }
+    ]
+  },
+
+  'scene_29': {
+    text: {
+      en: "Gromit collects proof: the notebook, the poster photo, and the drill. He hides them in his diary beside a small piece of wire. He plans to stop the theft tonight and keep the diamond safe.",
+      ua: "Ґроміт збирає докази: зошит, фото плаката й дриль. Він ховає їх у своєму щоденнику поруч із маленьким шматком дроту. Він планує зупинити крадіжку цієї ночі й зберегти діамант у безпеці."
+    },
+    choices: [
+      { text: "Wait in the hallway with a torch.", nextScene: 'scene_30' },
+      { text: "Call the police secretly.", nextScene: 'end_success_police' }
+    ]
+  },
+
+  'scene_30': {
+    text: {
+      en: "It is midnight. The penguin puts on the wrong trousers and leaves the house with a rope and hammer. Gromit follows him to the museum roof in the rain. He shines his torch and shouts. The penguin slips on the wet rail, the trousers stop, and the guard runs out. The diamond stays safe. <span class='game-success'>THE END</span>",
+      ua: "Опівночі. Пінгвін одягає неправильні штани й виходить із дому з мотузкою та молотком. Ґроміт іде за ним на дах музею під дощем. Він світить ліхтарем і кричить. Пінгвін ковзає на мокрій рейці, штани зупиняються, і охоронець вибігає. Діамант залишається в безпеці. <span class='game-success'>КІНЕЦЬ</span>"
+    },
+    choices: [
+      { text: "Play again from the start.", nextScene: 'start' }
+    ]
+  },
+
+  'end_fail_cold': {
+    text: {
+      en: "Gromit stays under the tree too long. He catches a cold and must stay in bed. The penguin can work on his plan without him. <span class='game-over'>GAME OVER</span>",
+      ua: "Ґроміт занадто довго сидить під деревом. Він застуджується й мусить залишитися в ліжку. Пінгвін може працювати над своїм планом без нього. <span class='game-over'>КІНЕЦЬ ГРИ</span>"
+    },
+    choices: [
+      { text: "Try again from the start.", nextScene: 'start' }
+    ]
+  },
+
+  'end_fail_asleep': {
+    text: {
+      en: "Gromit sleeps deeply. The penguin leaves at night, uses the wrong trousers, and steals the diamond. Gromit learns about it in the morning. <span class='game-over'>GAME OVER</span>",
+      ua: "Ґроміт міцно спить. Пінгвін вночі виходить, використовує неправильні штани й краде діамант. Ґроміт дізнається про це вранці. <span class='game-over'>КІНЕЦЬ ГРИ</span>"
+    },
+    choices: [
+      { text: "Try again from the start.", nextScene: 'start' }
+    ]
+  },
+
+  'end_success_police': {
+    text: {
+      en: "Wallace calls the police with Gromit's proof. Officers arrive, find the notebook and drill, and arrest the penguin before he can leave. The rent is paid with the reward. <span class='game-success'>THE END</span>",
+      ua: "Воллес дзвонить у поліцію з доказами Ґроміта. Офіцери приїжджають, знаходять зошит і дриль та заарештовують пінгвіна, перш ніж він зможе піти. Оренду сплачують нагородою. <span class='game-success'>КІНЕЦЬ</span>"
+    },
+    choices: [
+      { text: "Play again from the start.", nextScene: 'start' }
+    ]
+  }
+};
+
+// --- Vocabulary Data ---
+const vocabulary = [
+  "alarm clock",
+  "awake",
+  "present",
+  "mechanical",
+  "trousers",
+  "manual",
+  "remote control",
+  "burglar alarm",
+  "doorbell",
+  "carpet",
+  "button",
+  "strap",
+  "rent",
+  "lodger",
+  "museum",
+  "diamond",
+  "guard",
+  "roof",
+  "roof hatch",
+  "window",
+  "air vent",
+  "bridge",
+  "banister",
+  "rail",
+  "ladder",
+  "steps",
+  "engineer",
+  "tape measure",
+  "drawer",
+  "coat rack",
+  "socks",
+  "floor lamp",
+  "wire",
+  "map",
+  "reward",
+  "torch",
+  "rain",
+  "bucket",
+  "broom",
+  "boots",
+  "ceiling",
+  "hallway",
+  "stairs",
+  "door",
+  "note",
+  "proof",
+  "tired",
+  "storm",
+  "puddle",
+  "slope",
+  "rope",
+  "hammer",
+  "screwdriver",
+  "drill",
+  "screw",
+  "coins",
+  "job",
+  "traffic",
+  "wallpaper",
+  "paint"
+];
+
+const vocabTranslations = {
+  "alarm clock": "будильник",
+  "awake": "прокинутий",
+  "present": "подарунок",
+  "mechanical": "механічний",
+  "trousers": "штани",
+  "manual": "інструкція",
+  "remote control": "пульт",
+  "burglar alarm": "сигналізація",
+  "doorbell": "дзвінок",
+  "carpet": "килим",
+  "button": "кнопка",
+  "strap": "ремінь",
+  "rent": "оренда",
+  "lodger": "квартирант",
+  "museum": "музей",
+  "diamond": "діамант",
+  "guard": "охоронець",
+  "roof": "дах",
+  "roof hatch": "даховий люк",
+  "window": "вікно",
+  "air vent": "повітряний отвір",
+  "bridge": "міст",
+  "banister": "поручень",
+  "rail": "рейка",
+  "ladder": "драбина",
+  "steps": "сходинки",
+  "engineer": "інженер",
+  "tape measure": "рулетка",
+  "drawer": "шухляда",
+  "coat rack": "вішалка",
+  "socks": "шкарпетки",
+  "floor lamp": "торшер",
+  "wire": "дріт",
+  "map": "карта",
+  "reward": "нагорода",
+  "torch": "ліхтар",
+  "rain": "дощ",
+  "bucket": "відро",
+  "broom": "мітла",
+  "boots": "чоботи",
+  "ceiling": "стеля",
+  "hallway": "коридор",
+  "stairs": "сходи",
+  "door": "двері",
+  "note": "запис",
+  "proof": "доказ",
+  "tired": "втомлений",
+  "storm": "буря",
+  "puddle": "калюжа",
+  "slope": "схил",
+  "rope": "мотузка",
+  "hammer": "молоток",
+  "screwdriver": "викрутка",
+  "drill": "дриль",
+  "screw": "гвинт",
+  "coins": "монети",
+  "job": "робота",
+  "traffic": "рух",
+  "wallpaper": "шпалери",
+  "paint": "фарба"
+};
