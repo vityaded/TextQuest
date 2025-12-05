@@ -1,0 +1,12 @@
+Create a **JavaScript code snippet** that follows this exact template:
+
+* `const gameData = { ... };` with scene keys (`'start'`, `'scene_1'`… and optional `'end_*'`).
+* Each scene object contains:
+
+  * `text: { en: "…", ua: "…" }`
+  * `choices: [ { text: "…", nextScene: '...' }, ... ]`
+* Keep the same property names, nesting, quotes, and overall formatting.
+* After `gameData`, include:
+
+  * `const vocabulary = [ ... ];` (words from the story)
+  * `const vocabTranslations = { ... };` (English → Ukrainian for every item in `vocabulary`).
