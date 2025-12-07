@@ -1,0 +1,75 @@
+// Reference template for TextQuest adventures. Keep this structure unchanged when creating new quests.
+const gameData = {
+  // Each scene key uses single quotes. Every scene keeps the same text/choices shape.
+  'start': {
+    text: {
+      en: "Intro text in English.",
+      ua: "Вступний текст українською."
+    },
+    choices: [
+      { text: "Sample choice to another scene", nextScene: 'scene_1' },
+      { text: "Sample choice to success ending", nextScene: 'end_success' }
+    ]
+  },
+
+  'scene_1': {
+    text: {
+      en: "Regular scene text in English.",
+      ua: "Звичайний текст сцени українською."
+    },
+    choices: [
+      { text: "Branch to more scenes", nextScene: 'scene_2' },
+      { text: "Branch to fail ending", nextScene: 'end_fail' }
+    ]
+  },
+
+  // Add as many mid-story scenes as needed, always keeping text + choices arrays.
+  'scene_2': {
+    text: {
+      en: "Another scene follows the same structure.",
+      ua: "Ще одна сцена з такою ж структурою."
+    },
+    choices: [
+      { text: "Return to start to test loops", nextScene: 'start' },
+      { text: "Advance to success ending", nextScene: 'end_success' }
+    ]
+  },
+
+  // Success endings use the game-success span and can loop back to 'start'.
+  'end_success': {
+    text: {
+      en: "Success ending text. <span class='game-success'>THE END</span>",
+      ua: "Текст успішної кінцівки. <span class='game-success'>КІНЕЦЬ</span>"
+    },
+    choices: [
+      { text: "Play again", nextScene: 'start' }
+    ]
+  },
+
+  // Fail endings use the game-over span with a short reason.
+  'end_fail': {
+    text: {
+      en: "Failure reason. <span class='game-over'>FAILED (reason)</span>",
+      ua: "Причина невдачі. <span class='game-over'>ПРОВАЛ (причина)</span>"
+    },
+    choices: [
+      { text: "Try again", nextScene: 'start' }
+    ]
+  }
+}; // End of gameData
+
+// --- Vocabulary Data --- words from the story; list English items used above.
+const vocabulary = [
+  "intro",
+  "scene",
+  "success",
+  "failure"
+];
+
+// Provide a Ukrainian translation for every vocabulary entry using the same keys.
+const vocabTranslations = {
+  intro: "вступ",
+  scene: "сцена",
+  success: "успіх",
+  failure: "невдача"
+};
