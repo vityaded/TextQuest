@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quiz Homework Assignments</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+    .card { border: 1px solid #dfe3e8; box-shadow: 0 8px 20px rgba(0,0,0,0.05); }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900">
+  <div class="max-w-5xl mx-auto p-6 space-y-6">
+    <header class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+      <div>
+        <p class="text-sm uppercase tracking-wide text-slate-500">Homework Dashboard</p>
+        <h1 class="text-2xl font-bold">Quiz Assignments</h1>
+      </div>
+      <div class="text-sm text-slate-600">
+        Data is stored locally in your browser with <span class="font-semibold">localStorage</span>.
+      </div>
+    </header>
+
+    <section class="grid gap-4 md:grid-cols-2">
+      <div class="card rounded-lg bg-white p-5 space-y-4">
+        <div>
+          <p class="text-sm font-semibold text-slate-600">Create homework</p>
+          <h2 class="text-lg font-bold">Assign a quiz</h2>
+        </div>
+        <form id="assignment-form" class="space-y-3">
+          <label class="block text-sm font-medium text-slate-700">Quiz</label>
+          <select id="quiz-select" class="w-full rounded border border-slate-300 px-3 py-2" required></select>
+
+          <label class="block text-sm font-medium text-slate-700">Homework title</label>
+          <input id="assignment-title" class="w-full rounded border border-slate-300 px-3 py-2" placeholder="Unit 3 review" required />
+
+          <label class="block text-sm font-medium text-slate-700">Due date</label>
+          <input id="due-date" type="date" class="w-full rounded border border-slate-300 px-3 py-2" required />
+
+          <label class="block text-sm font-medium text-slate-700">Notes to students</label>
+          <textarea id="assignment-notes" class="w-full rounded border border-slate-300 px-3 py-2" rows="3" placeholder="Finish before Friday at noon"></textarea>
+
+          <button class="w-full rounded bg-blue-600 px-4 py-2 text-white font-semibold hover:bg-blue-700" type="submit">Assign as homework</button>
+        </form>
+      </div>
+
+      <div class="card rounded-lg bg-white p-5 space-y-4">
+        <div>
+          <p class="text-sm font-semibold text-slate-600">Assignments overview</p>
+          <h2 class="text-lg font-bold">Assignments by quiz</h2>
+        </div>
+        <div id="assignment-list" class="space-y-3 text-sm"></div>
+      </div>
+    </section>
+
+    <section class="card rounded-lg bg-white p-5 space-y-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm font-semibold text-slate-600">Selected assignment</p>
+          <h2 id="selected-assignment-title" class="text-lg font-bold">No assignment selected</h2>
+          <p id="selected-assignment-meta" class="text-sm text-slate-600"></p>
+        </div>
+        <div id="selected-quiz-title" class="rounded bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700"></div>
+      </div>
+
+      <p id="selected-assignment-notes" class="text-sm text-slate-700"></p>
+
+      <div class="grid gap-4 md:grid-cols-2">
+        <div class="space-y-3">
+          <div class="flex items-center justify-between text-sm font-semibold text-slate-600">
+            <span>Add submission</span>
+            <span id="quiz-total-points" class="text-xs font-medium text-slate-500"></span>
+          </div>
+          <form id="submission-form" class="space-y-3">
+            <input id="student-name" class="w-full rounded border border-slate-300 px-3 py-2" placeholder="Student name" required />
+            <input id="student-points" type="number" min="0" step="1" class="w-full rounded border border-slate-300 px-3 py-2" placeholder="Points earned" required />
+            <button class="w-full rounded bg-emerald-600 px-4 py-2 text-white font-semibold hover:bg-emerald-700" type="submit">Record result</button>
+          </form>
+        </div>
+
+        <div class="space-y-2">
+          <div class="flex items-center justify-between text-sm font-semibold text-slate-600">
+            <span>Completion stats</span>
+            <div class="text-xs text-slate-500" id="completion-summary"></div>
+          </div>
+          <div class="overflow-x-auto rounded border border-slate-200">
+            <table class="min-w-full text-sm" id="submission-table">
+              <thead class="bg-slate-100 text-left text-xs uppercase tracking-wide text-slate-600">
+                <tr>
+                  <th class="px-3 py-2">Student</th>
+                  <th class="px-3 py-2 text-right">Points</th>
+                  <th class="px-3 py-2 text-right">Correct %</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100" id="submission-rows">
+                <tr><td colspan="3" class="px-3 py-3 text-center text-slate-500">Select an assignment to see results.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const quizzes = [
+      { id: 'quiz-a', name: 'Grammar Checkpoint A', totalPoints: 20 },
+      { id: 'quiz-b', name: 'Vocabulary Drill B', totalPoints: 15 },
+      { id: 'quiz-c', name: 'Reading Comprehension C', totalPoints: 25 }
+    ];
+
+    let assignments = [];
+    let selectedAssignmentId = null;
+
+    const selectors = {
+      quizSelect: document.getElementById('quiz-select'),
+      assignmentForm: document.getElementById('assignment-form'),
+      assignmentList: document.getElementById('assignment-list'),
+      assignmentTitle: document.getElementById('assignment-title'),
+      assignmentNotes: document.getElementById('assignment-notes'),
+      dueDate: document.getElementById('due-date'),
+      selectedTitle: document.getElementById('selected-assignment-title'),
+      selectedMeta: document.getElementById('selected-assignment-meta'),
+      selectedNotes: document.getElementById('selected-assignment-notes'),
+      selectedQuizTitle: document.getElementById('selected-quiz-title'),
+      submissionForm: document.getElementById('submission-form'),
+      studentName: document.getElementById('student-name'),
+      studentPoints: document.getElementById('student-points'),
+      submissionRows: document.getElementById('submission-rows'),
+      completionSummary: document.getElementById('completion-summary'),
+      quizTotal: document.getElementById('quiz-total-points'),
+    };
+
+    function loadFromStorage() {
+      const stored = localStorage.getItem('quizAssignments');
+      assignments = stored ? JSON.parse(stored) : [];
+    }
+
+    function saveToStorage() {
+      localStorage.setItem('quizAssignments', JSON.stringify(assignments));
+    }
+
+    function renderQuizOptions() {
+      selectors.quizSelect.innerHTML = quizzes
+        .map(q => `<option value="${q.id}">${q.name} (${q.totalPoints} pts)</option>`) 
+        .join('');
+    }
+
+    function formatDate(dateStr) {
+      if (!dateStr) return 'No due date';
+      const date = new Date(dateStr + 'T00:00:00');
+      return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+    }
+
+    function renderAssignmentList() {
+      if (!assignments.length) {
+        selectors.assignmentList.innerHTML = '<p class="text-slate-500">No homework yet. Create one using the form.</p>';
+        return;
+      }
+
+      const grouped = quizzes.map(quiz => {
+        const quizAssignments = assignments.filter(a => a.quizId === quiz.id);
+        if (!quizAssignments.length) return '';
+        const items = quizAssignments.map(a => {
+          const completed = a.submissions?.length || 0;
+          return `
+            <button class="w-full rounded border border-slate-200 px-3 py-2 text-left hover:border-blue-300" data-assignment="${a.id}">
+              <div class="flex items-center justify-between">
+                <span class="font-semibold">${a.title}</span>
+                <span class="text-xs text-slate-500">${completed} completed</span>
+              </div>
+              <p class="text-xs text-slate-500">Due ${formatDate(a.dueDate)}</p>
+            </button>
+          `;
+        }).join('');
+        return `
+          <div class="rounded border border-slate-200 p-3">
+            <div class="mb-2 flex items-center justify-between text-xs font-semibold uppercase text-slate-500">
+              <span>${quiz.name}</span>
+              <span>${quizAssignments.length} assignment${quizAssignments.length === 1 ? '' : 's'}</span>
+            </div>
+            <div class="space-y-2">${items}</div>
+          </div>
+        `;
+      }).filter(Boolean).join('');
+
+      selectors.assignmentList.innerHTML = grouped;
+
+      selectors.assignmentList.querySelectorAll('[data-assignment]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          selectAssignment(btn.dataset.assignment);
+        });
+      });
+    }
+
+    function selectAssignment(assignmentId) {
+      const assignment = assignments.find(a => a.id === assignmentId);
+      selectedAssignmentId = assignmentId;
+      if (!assignment) return;
+
+      const quiz = quizzes.find(q => q.id === assignment.quizId);
+      selectors.selectedTitle.textContent = assignment.title;
+      selectors.selectedMeta.textContent = `Due ${formatDate(assignment.dueDate)} • ${assignment.submissions.length} completion${assignment.submissions.length === 1 ? '' : 's'}`;
+      selectors.selectedNotes.textContent = assignment.notes || 'No notes added for this homework.';
+      selectors.selectedQuizTitle.textContent = quiz ? quiz.name : '';
+      selectors.quizTotal.textContent = quiz ? `${quiz.totalPoints} total points` : '';
+
+      selectors.studentPoints.max = quiz?.totalPoints || '';
+      renderSubmissions(assignment);
+    }
+
+    function renderSubmissions(assignment) {
+      if (!assignment || !assignment.submissions.length) {
+        selectors.submissionRows.innerHTML = '<tr><td colspan="3" class="px-3 py-3 text-center text-slate-500">No submissions yet.</td></tr>';
+        selectors.completionSummary.textContent = '';
+        return;
+      }
+
+      const quiz = quizzes.find(q => q.id === assignment.quizId);
+      const totalPoints = quiz?.totalPoints || 1;
+
+      const rows = assignment.submissions.map(sub => {
+        const percent = Math.min(100, ((sub.points / totalPoints) * 100) || 0);
+        return `
+          <tr>
+            <td class="px-3 py-2 font-medium">${sub.student}</td>
+            <td class="px-3 py-2 text-right">${sub.points} / ${totalPoints}</td>
+            <td class="px-3 py-2 text-right">${percent.toFixed(0)}%</td>
+          </tr>
+        `;
+      }).join('');
+
+      selectors.submissionRows.innerHTML = rows;
+
+      const totalPercent = assignment.submissions.reduce((sum, sub) => sum + ((sub.points / totalPoints) * 100 || 0), 0);
+      const avgPercent = totalPercent / assignment.submissions.length;
+      selectors.completionSummary.textContent = `${assignment.submissions.length} completed • Avg ${avgPercent.toFixed(1)}%`;
+    }
+
+    selectors.assignmentForm.addEventListener('submit', event => {
+      event.preventDefault();
+      const quizId = selectors.quizSelect.value;
+      const title = selectors.assignmentTitle.value.trim();
+      const dueDate = selectors.dueDate.value;
+      const notes = selectors.assignmentNotes.value.trim();
+      if (!quizId || !title) return;
+
+      const newAssignment = {
+        id: crypto.randomUUID(),
+        quizId,
+        title,
+        dueDate,
+        notes,
+        submissions: []
+      };
+
+      assignments.push(newAssignment);
+      saveToStorage();
+      renderAssignmentList();
+      selectAssignment(newAssignment.id);
+      selectors.assignmentForm.reset();
+    });
+
+    selectors.submissionForm.addEventListener('submit', event => {
+      event.preventDefault();
+      if (!selectedAssignmentId) return;
+      const assignment = assignments.find(a => a.id === selectedAssignmentId);
+      if (!assignment) return;
+
+      const student = selectors.studentName.value.trim();
+      const points = Number(selectors.studentPoints.value);
+      const quiz = quizzes.find(q => q.id === assignment.quizId);
+      const total = quiz?.totalPoints || 1;
+      const clampedPoints = Math.min(Math.max(points, 0), total);
+
+      assignment.submissions.push({ student, points: clampedPoints });
+      saveToStorage();
+      renderSubmissions(assignment);
+      renderAssignmentList();
+      selectors.submissionForm.reset();
+    });
+
+    // initial render
+    loadFromStorage();
+    renderQuizOptions();
+    renderAssignmentList();
+    if (assignments.length) {
+      selectAssignment(assignments[0].id);
+    }
+  </script>
+</body>
+</html>
